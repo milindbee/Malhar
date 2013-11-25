@@ -17,12 +17,18 @@ public class RScriptOperatorTest {
         RScript oper = new RScript();
         HashMap map = new HashMap();
 
-        map.put("RScriptPath", "/home/hduser/a.R");
+        oper.setScript("/home/hduser/anInt.R");
 
         oper.setup(null);
         oper.beginWindow(0); //
 
-        oper.data.process(map);
+        oper.inBindings.process(map);
+
+        oper.setScript("/home/hduser/aReal.R");
+        oper.inBindings.process(map);
+
+        oper.setScript("/home/hduser/aString.R");
+        oper.inBindings.process(map);
 
         oper.endWindow();
 
