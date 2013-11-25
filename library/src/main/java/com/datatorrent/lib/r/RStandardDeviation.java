@@ -13,6 +13,21 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * This operator computes variance and standard deviation over incoming data using R functions <br>
+ * <br>
+ * <b>Input Port(s) : </b><br>
+ * <b>data : </b> Received data values on this input port. <br>
+ * <br>
+ * <b>Output Port(s) : </b> <br>
+ * <b>variance : </b>Variance value output port. <br>
+ * <b>standardDeviation : </b>Std deviation value output port. <br>
+ * <br>
+ * <b>StateFull : Yes</b>, value are aggregated over application window. <br>
+ * <b>Partitions : No</b>, no. <br>
+ * <br>
+ */
+
 public class RStandardDeviation extends BaseOperator {
 
     private List<Number> values = new ArrayList<Number>();
@@ -61,6 +76,10 @@ public class RStandardDeviation extends BaseOperator {
         }
     }
 
+    /*
+     * Calculates and emits the values of variance and standard deviation.
+     * Clears the vector at the end of teh function. SO starts with new data in every application window.
+     */
 
     @Override
     public void endWindow() {
