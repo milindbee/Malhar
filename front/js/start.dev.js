@@ -13,16 +13,23 @@
 * See the License for the specific language governing permissions and
 * limitations under the License.
 */
-var templates = DT.templates;
 
-function nameFormatter(name, row) {
-    return templates.jar_app_view_link({
-        appName: name,
-        fileName: row.get('fileName')
-    });
-}
+// Register pre-compiled templates
+var kt = require('knights-templar');
+var precompiled = require('./precompiled-templates');
+kt.registerPrecompiled(precompiled);
 
-exports = module.exports = [
-    { id: "selector", key: "selected", label: "", select: true, width: 40, lock_width: true },
-    { id: "name", filter: "like", label: "App Name", key: "name", sort: "string", sort_value: "a", format: nameFormatter }
-]
+// Set the datatorrent library to DT, global object.
+window.DT = require('./datatorrent');
+
+// Set up the options for the dashboard
+var appOptions = {
+    host: window.location.host,
+    pages: require('./app/pages')
+};
+
+// Start the app in the #wrapper element on load
+$(window).ready(function() {
+    appOptions.el = document.getElementById('wrapper');
+    var app = new DT.lib.App(appOptions);
+});
