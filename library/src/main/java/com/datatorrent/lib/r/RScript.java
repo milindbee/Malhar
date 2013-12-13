@@ -17,6 +17,7 @@
 package com.datatorrent.lib.r;
 
 
+import java.io.*;
 import com.datatorrent.api.*;
 import com.datatorrent.api.annotation.InputPortFieldAnnotation;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
@@ -38,10 +39,11 @@ import java.util.Map;
 /**
  * This operator enables a user to execute a R script on tuples for Map<String, Object>.
  * The user should -
- * 1. set the name of the script to be executed,
+ * 1. set the name of the script to be executed,Make sure that the script file
+ *    is available in teh classpath.
  * 2. set the name of the return variable
  * 3. set the type of arguments being passed. This will be done in a Map.
- * 4. Send the data in the form of a tple consisting of a key:value pair where,
+ * 4. Send the data in the form of a tuple consisting of a key:value pair where,
  *      "key" represents the name of the argument
  *      "value" represents the actual value of the argument.
  * A map of all the arguments is created and passed as input.
@@ -51,7 +53,7 @@ import java.util.Map;
  * <b> Sample Usage Code : </b>
  * oper is an object of type RScript.
  *
- *  oper.setScript("<script name with absolute path>");
+ *  oper.setScriptFilePath("<script name>");
  *  oper.setReturnVariable("<name of the returned variable>");
  *
  *  Map<String, RScript.REXP_TYPE> argTypeMap = new HashMap<String, RScript.REXP_TYPE>();
@@ -98,13 +100,17 @@ public class RScript extends ScriptOperator {
         REXP_TYPE(int value) {
             this.value = value;
         }
-    };
+    }
 
     @NotNull
     private Map<String, REXP_TYPE> argTypeMap;
 
     private List<Map<String, Object>> tupleList = new ArrayList<Map<String, Object>>();
     private String returnVariable;
+
+
+
+    protected String scriptFilePath;
 
     private Rengine rengine;
     private static Logger log = LoggerFactory.getLogger(RScript.class);
@@ -114,20 +120,35 @@ public class RScript extends ScriptOperator {
         return null;  //To change body of implemented methods use File | Settings | File Templates.
     }
 
+    // Gt the value of the name of the variable being returned
     public String getReturnVariable() {
         return returnVariable;
     }
 
+    // Set teh name for the return variable
     public void setReturnVariable(String returnVariable) {
         this.returnVariable = returnVariable;
     }
 
+    // Get the value of the script file with path as specified.
+    public String getScriptFilePath() {
+        return scriptFilePath;
+    }
+
+    // Set the value of the script file which should be executed.
+    public void setScriptFilePath(String scriptFilePath) {
+        this.scriptFilePath = scriptFilePath;
+    }
+
+    // Output port on which an int type of value is returned.
     @OutputPortFieldAnnotation(name = "intOutput")
     public final transient DefaultOutputPort<Integer> intOutput = new DefaultOutputPort<Integer>();
 
+    // Output port on which an double type of value is returned.
     @OutputPortFieldAnnotation(name = "doubleOutput")
     public final transient DefaultOutputPort<Double> doubleOutput = new DefaultOutputPort<Double>();
 
+    // Output port on which an string type of value is returned.
     @OutputPortFieldAnnotation(name = "strOutput")
     public final transient DefaultOutputPort<String> strOutput = new DefaultOutputPort<String>();
 
@@ -193,11 +214,11 @@ public class RScript extends ScriptOperator {
             }
 
             // Call the R script specified.
-            REXP result = rengine.eval("source(\"" + super.script + "\")");
+            REXP result = rengine.eval(super.script);
             REXP retVal = rengine.eval(getReturnVariable());
 
 
-             //Get the returned value and emit it on the appropriate output port depending
+             // Get the returned value and emit it on the appropriate output port depending
              // on its datatype.
              switch (retVal.rtype) {
                 case REXP.INTSXP :
@@ -239,9 +260,45 @@ public class RScript extends ScriptOperator {
         {
             log.debug(String.format( "\nCannot load R"));
             return;
-        };
+        }
+        super.setScript(readFileAsString());
     }
 
-};
+    /*
+    * This function reads the script which is to be executed.
+     */
+    private String readFileAsString() {
+        StringBuffer fileData = new StringBuffer(1000);
 
+        try {
+            BufferedReader reader = new BufferedReader(new InputStreamReader(this.getClass().getClassLoader().getResourceAsStream(this.scriptFilePath)));
+
+            char[] buf = new char[1024];
+            int numRead = 0;
+
+            while ((numRead = reader.read(buf)) != -1) {
+                String readData = String.valueOf(buf, 0, numRead);
+                fileData.append(readData);
+                buf = new char[1024];
+            }
+
+            reader.close();
+        } catch (IOException ex){
+            log.debug(String.format( "\nError reading the R script"));
+            ex.printStackTrace();
+        }
+
+        return fileData.toString();
+    }
+
+    /*
+    * Stop the R engine
+    */
+    @Override
+    public void teardown() {
+        if (rengine != null){
+            rengine.end();
+        }
+    }
+}
 
