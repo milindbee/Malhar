@@ -25,6 +25,10 @@ import com.datatorrent.lib.script.ScriptOperator;
 import org.apache.commons.lang.mutable.MutableDouble;
 import org.rosuda.JRI.REXP;
 import org.rosuda.JRI.Rengine;
+import org.rosuda.REngine.JRI.JRIEngine;
+import org.rosuda.REngine.REXPMismatchException;
+import org.rosuda.REngine.REngine;
+import org.rosuda.REngine.REngineException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,11 +43,15 @@ import java.util.Map;
 /**
  * This operator enables a user to execute a R script on tuples for Map<String, Object>.
  * The user should -
- * 1. set the name of the script to be executed,Make sure that the script file
- *    is available in teh classpath.
- * 2. set the name of the return variable
- * 3. set the type of arguments being passed. This will be done in a Map.
- * 4. Send the data in the form of a tuple consisting of a key:value pair where,
+ * 1. set the name of the return variable
+ * 2. set the name of the script to be executed. Make sure that the script file
+ *    is available in the classpath.
+ * 3. Set whether the file should be copied on the node before executing i.e. if the file
+ *    has been manually copied on the node in the cluster, this operator does not have to
+ *    copy. If not, the operator should do so. The user needs to tell the operator either ways.
+ *    By default, the operator assumes that the file is copied on the node in the right location.
+ * 4. set the type of arguments being passed. This will be done in a Map.
+ * 5. Send the data in the form of a tuple consisting of a key:value pair where,
  *      "key" represents the name of the argument
  *      "value" represents the actual value of the argument.
  * A map of all the arguments is created and passed as input.
@@ -55,6 +63,7 @@ import java.util.Map;
  *
  *  oper.setScriptFilePath("<script name>");
  *  oper.setReturnVariable("<name of the returned variable>");
+ *  oper.setRuntimeFileCopy(false);
  *
  *  Map<String, RScript.REXP_TYPE> argTypeMap = new HashMap<String, RScript.REXP_TYPE>();
  *  argTypeMap.put(<argument name>, RScript.<argument type in the form of REXP_TYPE>);
@@ -76,12 +85,15 @@ import java.util.Map;
  *
  *  Pass this 'map' to the operator now.
  *
- * Currently, support has been added for only int, real and string type of values to be
- * passed and returned from th R scripts.
+ *  Currently, support has been added for only int, real and string type of values and the corresonding arrays
+ *  to be passed and returned from the R scripts.
+ *
  *
  *
  * */
-public class RScript extends ScriptOperator {
+
+
+ public class RScript extends ScriptOperator {
 
     public Map<String, REXP_TYPE> getArgTypeMap() {
         return argTypeMap;
@@ -105,11 +117,18 @@ public class RScript extends ScriptOperator {
     @NotNull
     private Map<String, REXP_TYPE> argTypeMap;
 
-    private List<Map<String, Object>> tupleList = new ArrayList<Map<String, Object>>();
+    private List<Integer> intList = new ArrayList<Integer>();
+    private List<Double> doubleList = new ArrayList<Double>();
+    private List<String> strList =new ArrayList<String>();
+
+    private List<Integer[]> intArrayList = new ArrayList<Integer[]>();
+    private List<Double[]> doubleArrayList = new ArrayList<Double[]>();
+    private List<String[]> strArrayList = new ArrayList<String[]>();
+
+    transient private String tmpFileName;
+
     private String returnVariable;
-
-
-
+    private boolean runtimeFileCopy = false;
     protected String scriptFilePath;
 
     private Rengine rengine;
@@ -140,6 +159,14 @@ public class RScript extends ScriptOperator {
         this.scriptFilePath = scriptFilePath;
     }
 
+    public boolean isRuntimeFileCopy() {
+        return runtimeFileCopy;
+    }
+
+    public void setRuntimeFileCopy(boolean runtimeFileCopy) {
+        this.runtimeFileCopy = runtimeFileCopy;
+    }
+
     // Output port on which an int type of value is returned.
     @OutputPortFieldAnnotation(name = "intOutput")
     public final transient DefaultOutputPort<Integer> intOutput = new DefaultOutputPort<Integer>();
@@ -148,107 +175,37 @@ public class RScript extends ScriptOperator {
     @OutputPortFieldAnnotation(name = "doubleOutput")
     public final transient DefaultOutputPort<Double> doubleOutput = new DefaultOutputPort<Double>();
 
+
     // Output port on which an string type of value is returned.
     @OutputPortFieldAnnotation(name = "strOutput")
     public final transient DefaultOutputPort<String> strOutput = new DefaultOutputPort<String>();
+    //public final transient DefaultOutputPort<Map<String, Object>> strOutput = new DefaultOutputPort<Map<String, Object>>();
 
+
+    // Output port on which an array of type int is returned.
+    @OutputPortFieldAnnotation(name = "intArrayOutput")
+    public final transient DefaultOutputPort<Integer[]> intArrayOutput = new DefaultOutputPort<Integer[]>();
+
+    // Output port on which an array of type double is returned.
+    @OutputPortFieldAnnotation(name = "doubleArrayOutput")
+    public final transient DefaultOutputPort<Double[]> doubleArrayOutput = new DefaultOutputPort<Double[]>();
+
+    // Output port on which an array of type str is returned.
+    @OutputPortFieldAnnotation(name = "strArrayOutput")
+    public final transient DefaultOutputPort<String[]> strArrayOutput = new DefaultOutputPort<String[]>();
 
     /**
-     * Adds the received tuple to the tupleList. This list of tuples will be processed one at a time
-     * by the RScript to be invoked.
+     * Process the tuples
      */
     @Override
     public void process(Map<String, Object> tuple)
     {
-        tupleList.add(tuple);
-    }
-
-    /**
-     * Execute R code with variable value map.
-     * Here,the RScript will be called for each of the tuples.The data will be emitted on an outputport
-     * depending on its type.
-     * It is assumed that the downstream operator knows the type of data being emitted by this operator
-     * and will be receiving input tuples from the right output port of this operator.
-     */
-    @Override
-    public void endWindow() {
-
-        if (tupleList.size() == 0) return;
-
-        //Get each argument and assign it to be available to the script.
-        for (Map<String, Object> tuple: tupleList) {
-
-            for (Map.Entry<String, Object> entry : tuple.entrySet()) {
-                String key = entry.getKey();
-                Object value = entry.getValue();
-
-                switch (argTypeMap.get(key)) {
-                    case REXP_INT:
-                        int[] iArr = new int[1];
-                        iArr[0] = (Integer)value;
-                        rengine.assign(key, new REXP(REXP.XT_INT, iArr));
-                        break;
-                    case REXP_DOUBLE:
-                        double[] dArr = new double[1];
-                        dArr[0] = (Double)value;
-                        rengine.assign(key, new REXP(REXP.XT_DOUBLE, dArr));
-                        break;
-                    case REXP_STR:
-                        String[] sArr = new String[1];
-                        sArr[0] = (String)value;
-                        rengine.assign(key, new REXP(REXP.XT_STR, sArr));
-                        break;
-                    case REXP_BOOL:
-                        rengine.assign(key, new REXP(REXP.XT_BOOL, value));
-                        break;
-                    case REXP_ARRAY_INT:
-                        rengine.assign(key, new REXP(REXP.XT_ARRAY_INT, value));
-                        break;
-                    case REXP_ARRAY_DOUBLE:
-                        rengine.assign(key, new REXP(REXP.XT_ARRAY_DOUBLE, value));
-                        break;
-                    case REXP_ARRAY_STR:
-                        rengine.assign(key, new REXP(REXP.XT_ARRAY_STR, value));
-                        break;
-                }
-            }
-
-            // Call the R script specified.
-            REXP result = rengine.eval(super.script);
-            REXP retVal = rengine.eval(getReturnVariable());
-
-
-             // Get the returned value and emit it on the appropriate output port depending
-             // on its datatype.
-             switch (retVal.rtype) {
-                case REXP.INTSXP :
-                    int iData = retVal.asInt();
-                    intOutput.emit(iData);
-                    break;
-
-                 case REXP.REALSXP :
-                    double dData = retVal.asDouble();
-                    doubleOutput.emit(dData);
-                    break;
-
-                case REXP.STRSXP:
-                    String sData = retVal.asString();
-                    strOutput.emit(sData);
-                    break;
-
-                default:
-                    //<TBD> : Throw an exception for a data type not found
-                    break;
-            }
-        }
-
-        //Clear the list of tuples.
-        tupleList.clear();
-        return;
+        processTuple(tuple);
     }
 
     /*
-    * Initialize the R engine
+    * Initialize the R engine, set the name of the script file to be executed.
+    * If the script file to be executed on each node is to be copied by this operator, do so.
     */
     @Override
     public void setup(Context.OperatorContext context) {
@@ -259,26 +216,125 @@ public class RScript extends ScriptOperator {
         if (!rengine.waitForR())
         {
             log.debug(String.format( "\nCannot load R"));
-            return;
+            throw new RuntimeException("Cannot load R");
         }
+
         super.setScript(readFileAsString());
+
+        if(this.isRuntimeFileCopy()){
+
+            getFileName();
+            writeStringAsFile(super.script, this.tmpFileName);
+        }
+    }
+
+
+    /*
+     * Emit the tuples from all the lists on the respective output ports
+    */
+
+    @Override
+    public void endWindow() {
+
+        //Emit and then clear the list of tuples.
+        for (int i=0; i<intList.size(); i++) {
+            intOutput.emit(intList.get(i));
+        }
+        intList.clear();
+
+        for (int i=0; i<doubleList.size(); i++) {
+            doubleOutput.emit(doubleList.get(i));
+        }
+        doubleList.clear();
+
+        for (int i=0; i<intArrayList.size(); i++) {
+            intArrayOutput.emit(intArrayList.get(i));
+        }
+        intArrayList.clear();
+
+        for (int i=0; i<doubleArrayList.size(); i++) {
+            doubleArrayOutput.emit(doubleArrayList.get(i));
+        }
+        doubleArrayList.clear();
+
+        for (int i=0; i<strArrayList.size(); i++) {
+            strArrayOutput.emit(strArrayList.get(i));
+        }
+        strArrayList.clear();
+
+
+        for (int i=0; i<strList.size(); i++) {
+            strOutput.emit(strList.get(i));
+        }
+        strList.clear();
+
+        return;
+    }
+
+
+
+    /*
+    * Stop the R engine and delete the script file if it was copied by this operator during the initial setup.
+    */
+    @Override
+    public void teardown() {
+
+        if(this.isRuntimeFileCopy()){
+
+            File file = new File(this.tmpFileName);
+            if (!file.delete()) {
+                throw new RuntimeException("Error deleting file : " + this.tmpFileName);
+            }
+        }
+
+
+        if (rengine != null){
+            rengine.end();
+        }
+    }
+
+
+    /*
+    * Create a file name for the file to be created in the temporary directory. This name will consist of the
+    * java tmp dir. + actual file name appended by the current time and thread id.
+    * This is so as to make it unique and avoid overwriting any file with the same name already existing.
+    * This will be needed when creating the file and will be used when sourcing the R script. The file
+    * will be deleted later.
+    */
+    private void getFileName(){
+        String[] data = getScriptFilePath().split(File.separator);
+        String fileName = data[data.length - 1];
+        this.tmpFileName = System.getProperty("java.io.tmpdir") + File.separatorChar + fileName + System.currentTimeMillis() + "_" + Thread.currentThread().getId();
+        return;
     }
 
     /*
-    * This function reads the script which is to be executed.
-     */
+    * This function reads the script file - the R script file here, which is to be executed
+    * and loads it into the memory.
+    */
     private String readFileAsString() {
         StringBuffer fileData = new StringBuffer(1000);
 
         try {
-            BufferedReader reader = new BufferedReader(new InputStreamReader(this.getClass().getClassLoader().getResourceAsStream(this.scriptFilePath)));
+
+            BufferedReader reader;
+
+            if(isRuntimeFileCopy()){
+                reader = new BufferedReader(new InputStreamReader(this.getClass().getClassLoader().getResourceAsStream(this.scriptFilePath)));
+            } else {
+                reader = new BufferedReader(new FileReader(this.getScriptFilePath()));
+            }
+
 
             char[] buf = new char[1024];
             int numRead = 0;
 
             while ((numRead = reader.read(buf)) != -1) {
                 String readData = String.valueOf(buf, 0, numRead);
+                // Not needed if we are going to "source' the R script
+                //readData = readData.replace("\n", "; ");
                 fileData.append(readData);
+
                 buf = new char[1024];
             }
 
@@ -292,13 +348,159 @@ public class RScript extends ScriptOperator {
     }
 
     /*
-    * Stop the R engine
+    * Name : writeStringAsFile() : Writes contents from memory into a file.
+    * Arguments : contents from teh memory - to be written to the file
+    *
+    * Here, this function is used to create an R script file on a node before it can be sourced.
+    * The file will be created in the default temporary-file directory of java. Once the file is sourced,
+    * it will be deleted.
     */
-    @Override
-    public void teardown() {
-        if (rengine != null){
-            rengine.end();
+
+    private void writeStringAsFile(String fileContent, String rFileName) {
+        FileWriter fileWriter = null;
+        try {
+            String content = fileContent;
+            File newRFile = new File(rFileName);
+            fileWriter = new FileWriter(newRFile);
+            BufferedWriter bw = new BufferedWriter(fileWriter);
+
+            bw.write(content);
+            bw.close();
+        } catch (IOException ex) {
+            log.error(String.format("\nError creating the R script file"));
+        } finally {
+            try {
+                fileWriter.close();
+            } catch (IOException ex) {
+                ex.printStackTrace();
+            }
         }
     }
+
+
+    /**
+     * Execute R code with variable value map.
+     * Here,the RScript will be called for each of the tuples.The data will be emitted on an outputport
+     * depending on its type.
+     * It is assumed that the downstream operator knows the type of data being emitted by this operator
+     * and will be receiving input tuples from the right output port of this operator.
+     */
+
+    public void processTuple(Map<String, Object> tuple){
+
+        for (Map.Entry<String, Object> entry : tuple.entrySet()) {
+            String key = entry.getKey();
+            Object value = entry.getValue();
+
+            switch (argTypeMap.get(key)) {
+                case REXP_INT:
+                    int[] iArr = new int[1];
+                    iArr[0] = (Integer)value;
+                    rengine.assign(key, new REXP(REXP.XT_INT, iArr));
+                    break;
+                case REXP_DOUBLE:
+                    double[] dArr = new double[1];
+                    dArr[0] = (Double)value;
+                    rengine.assign(key, new REXP(REXP.XT_DOUBLE, dArr));
+                    break;
+                case REXP_STR:
+                    String[] sArr = new String[1];
+                    sArr[0] = (String)value;
+                    rengine.assign(key, new REXP(REXP.XT_STR, sArr));
+                    break;
+                case REXP_BOOL:
+                    int[] bArr = new int[1];
+                    bArr[0] = (Integer)value;
+                    rengine.assign(key, new REXP(REXP.XT_BOOL, bArr));
+                    break;
+                case REXP_ARRAY_INT:
+                    rengine.assign(key, new REXP(REXP.XT_ARRAY_INT, value));
+                    break;
+                case REXP_ARRAY_DOUBLE:
+                    rengine.assign(key, new REXP(REXP.XT_ARRAY_DOUBLE, value));
+                    break;
+                case REXP_ARRAY_STR:
+                    rengine.assign(key, new REXP(REXP.XT_ARRAY_STR, value));
+                    break;
+                default:
+                    //<TBD> Log error
+                    break;
+            }
+        }
+
+        if(isRuntimeFileCopy()){
+            REXP result = rengine.eval("source(" + "\"" + this.tmpFileName + "\")");
+        } else {
+            REXP result = rengine.eval("source(\"" + getScriptFilePath() + "\")");
+        }
+
+        REXP retVal = rengine.eval(getReturnVariable());
+
+        // Get the returned value and emit it on the appropriate output port depending
+        // on its datatype.
+        int len = 0;
+        switch (retVal.rtype) {
+            case REXP.INTSXP :
+//                int iData = retVal.asInt();
+//                intList.add(iData);
+                len = retVal.asIntArray().length;
+                int iData;
+
+                if (len > 1){
+
+                    Integer[] iAList = new Integer[len];
+                    for (int i=0; i<len; i++) {
+                        iAList[i] = (retVal.asIntArray()[i]);
+                    }
+                    intArrayList.add(iAList);
+                }else {
+                    iData = retVal.asInt();
+                    intList.add(iData);
+                }
+
+                break;
+
+            case REXP.REALSXP :
+                len = retVal.asDoubleArray().length;
+                double dData;
+
+                if (len > 1){
+
+                    Double[] dAList = new Double[len];
+                    for (int i=0; i<len; i++) {
+                        dAList[i] = (retVal.asDoubleArray()[i]);
+                    }
+                    doubleArrayList.add(dAList);
+                }else {
+                    dData = retVal.asDouble();
+                    doubleList.add(dData);
+                }
+
+                break;
+
+            case REXP.STRSXP:
+                len = retVal.asStringArray().length;
+                String sData;
+
+                if (len > 1){
+
+                    String[] sAList = new String[len];
+                    for (int i=0; i<len; i++) {
+                        sAList[i] = (retVal.asStringArray()[i]);
+                    }
+                    strArrayList.add(sAList);
+                }else {
+                    sData = retVal.asString();
+                    strList.add(sData);
+                }
+
+                break;
+
+            default:
+                //<TBD> : Throw an exception for a data type not found
+                break;
+        }
+    }
+
 }
 
