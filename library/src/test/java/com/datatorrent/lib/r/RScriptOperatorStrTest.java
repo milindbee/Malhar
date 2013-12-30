@@ -16,6 +16,7 @@
 
 package com.datatorrent.lib.r;
 
+import com.datatorrent.lib.testbench.CountAndLastTupleTestSink;
 import com.datatorrent.lib.testbench.HashTestSink;
 import junit.framework.Assert;
 import org.junit.Test;
@@ -32,11 +33,12 @@ public class RScriptOperatorStrTest {
 
         oper.setScriptFilePath("r/aString.R");
         oper.setReturnVariable("retVal");
+        oper.setRuntimeFileCopy(true);
 
         oper.setup(null);
         oper.beginWindow(0);
 
-        HashTestSink hashSink = new HashTestSink();
+        CountAndLastTupleTestSink hashSink = new CountAndLastTupleTestSink();
         oper.strOutput.setSink(hashSink);
 
         Map<String, RScript.REXP_TYPE> argTypeMap = new HashMap<String, RScript.REXP_TYPE>();
@@ -60,6 +62,7 @@ public class RScriptOperatorStrTest {
         oper.inBindings.process(map);
 
         oper.endWindow();
+        oper.teardown();
 
         Assert.assertEquals("Number of strings returned after concatenation : ",  2, hashSink.count);
         System.out.println("Number of strings returned after concatenation : " + hashSink.count);
