@@ -33,13 +33,14 @@ public class RScriptOperatorIntTest {
     @Test
     public void testInt(){
 
-        oper.setScriptFilePath("r/anInt.R");
+        oper.setScriptFilePath("r/anInteger.R");
         oper.setReturnVariable("retVal");
+        oper.setRuntimeFileCopy(true);
 
         oper.setup(null);
         oper.beginWindow(0);
 
-        HashTestSink hashSink = new HashTestSink();
+        CountAndLastTupleTestSink hashSink = new CountAndLastTupleTestSink();
         oper.intOutput.setSink(hashSink);
 
         Map<String, RScript.REXP_TYPE> argTypeMap = new HashMap<String, RScript.REXP_TYPE>();
@@ -59,6 +60,7 @@ public class RScriptOperatorIntTest {
         oper.inBindings.process(map);
 
         oper.endWindow();
+        oper.teardown();
 
         Assert.assertEquals("Number of integer additions done : ",  2, hashSink.count);
         System.out.println("Number of integer additions done : " + hashSink.count);
