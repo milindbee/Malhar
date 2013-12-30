@@ -1,20 +1,21 @@
 #!/usr/bin/Rscript
-
-# This script takes two strings and returns a concatenated string from both of 
-# the individual strings. The concatenation is done using the characters "--".
-# iThe argument "collapse" specifies the character(s) to be used between the 
-# elements of the vector to be collapsed.
-# Used to test the 'STR' data type(s) being passed from and to the 
-# Rscript operator for Malhar.
-# str1 and str2 are passed as arguments by the client and retVal is the 
-# result returned by the script.
-
-# The following lines to be uncommented to test the script
+#`
+# This script takes two strings and a seperator and concatenates the two strings seperated  by the seperator.
+# It returns such a newly formed string
 #
-# args<-commandArgs(TRUE)
-# str1<-args[1]
-# str2<-args[2]
-# seperator<-args[3]
+# Used to test the "string' data type(s) being passed from and to the Rscript operator for Malhar.
+# str1 and str2 are passed as arguments by the client and retVal is the result returned by the script.
+#
 
-retVal<-paste(str1, str2, sep=seperator)
-return(retVal)
+retVal<-c("abc")
+print(retVal)
+
+f<-function(a, b, c) {
+    result<-paste(a, b, sep=c)
+    return(result)
+}
+
+retVal<-f(str1, str2, seperator)
+
+print(retVal)
+retVal
