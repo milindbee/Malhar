@@ -16,7 +16,7 @@
 
 package com.datatorrent.lib.r;
 
-import com.datatorrent.lib.testbench.HashTestSink;
+import com.datatorrent.lib.testbench.*;
 import junit.framework.Assert;
 import org.junit.Test;
 
@@ -31,22 +31,25 @@ public class RScriptOperatorRealTest {
 
         oper.setScriptFilePath("r/aReal.R");
         oper.setReturnVariable("retVal");
+        oper.setRuntimeFileCopy(true);
 
         oper.setup(null);
         oper.beginWindow(0);
 
-        HashTestSink hashSink = new HashTestSink();
+        CountAndLastTupleTestSink hashSink = new CountAndLastTupleTestSink();
         oper.doubleOutput.setSink(hashSink);
 
         Map<String, RScript.REXP_TYPE> argTypeMap = new HashMap<String, RScript.REXP_TYPE>();
         argTypeMap.put("num1", RScript.REXP_TYPE.REXP_DOUBLE);
         argTypeMap.put("num2", RScript.REXP_TYPE.REXP_DOUBLE);
+
         oper.setArgTypeMap(argTypeMap);
 
         HashMap map = new HashMap();
 
         map.put("num1", 5.2);
         map.put("num2", 12.4);
+
         oper.inBindings.process(map);
         map = new HashMap();
 
@@ -55,6 +58,7 @@ public class RScriptOperatorRealTest {
         oper.inBindings.process(map);
 
         oper.endWindow();
+        oper.teardown();
 
         Assert.assertEquals("Number of real number additions done : ", 2, hashSink.count);
         System.out.println("Number of real number additions done : " + hashSink.count);
