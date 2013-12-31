@@ -95,7 +95,7 @@ public class RMin<V extends Number> extends BaseNumberValueOperator<Number> impl
         if (!rengine.waitForR())
         {
             log.debug(String.format( "\nCannot load R"));
-            return;
+            throw new RuntimeException("Cannot load R");
         }
 
     }
