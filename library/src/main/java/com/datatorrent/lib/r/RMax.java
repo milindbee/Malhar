@@ -47,7 +47,7 @@ import java.util.List;
  **/
 
 public class RMax<V extends Number> extends BaseNumberValueOperator<Number> implements Unifier<Number>{
-    private List<Number> vector = new ArrayList<Number>();
+    private List<Number> numList = new ArrayList<Number>();
     private Rengine rengine;
 
     private static Logger log = LoggerFactory.getLogger(RMax.class);
@@ -56,7 +56,7 @@ public class RMax<V extends Number> extends BaseNumberValueOperator<Number> impl
     public final transient DefaultInputPort<Number> data = new DefaultInputPort<Number>()
     {
         /**
-         * Adds the tuple to the vector
+         * Adds the tuple to the numList
          */
         @Override
         public void process(Number tuple)
@@ -65,13 +65,13 @@ public class RMax<V extends Number> extends BaseNumberValueOperator<Number> impl
         }
     };
     /**
-     * Adds the received tuple to the vector
+     * Adds the received tuple to the numList
      */
 
     @Override
     public void process(Number tuple)
     {
-        vector.add(tuple);
+        numList.add(tuple);
     }
 
     @OutputPortFieldAnnotation(name = "max")
@@ -102,28 +102,28 @@ public class RMax<V extends Number> extends BaseNumberValueOperator<Number> impl
 
     /**
      * Invokes the 'max' function from R to emit a maximum from the values received in the application window.
-     * Clears the vector at the end of the function.
+     * Clears the numList at the end of the function.
      **/
 
     @Override
     public void endWindow() {
 
-        if (vector.size() == 0) return;
+        if (numList.size() == 0) return;
 
-        double[] values = new double[vector.size()];
-        for (int i = 0; i < vector.size(); i++){
-            values[i] = vector.get(i).doubleValue();
+        double[] values = new double[numList.size()];
+        for (int i = 0; i < numList.size(); i++){
+            values[i] = numList.get(i).doubleValue();
         }
 
 
-        rengine.assign("vector", values);
+        rengine.assign("numList", values);
 
-        double rMax = rengine.eval("max(vector)").asDouble();
+        double rMax = rengine.eval("max(numList)").asDouble();
 
         log.debug(String.format( "\nMax is : \"" + rMax));
 
         max.emit(rMax);
-        vector.clear();
+        numList.clear();
 
     }
 }
