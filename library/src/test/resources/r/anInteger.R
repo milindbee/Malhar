@@ -8,7 +8,9 @@
 # result returned by the script.
 #
 
-x = num1
-y = num2 
-retVal<-sum(x,y)
-retVal
+anInteger <- function() {
+
+retVal<-sum(num1, num2)
+return(retVal)
+
+}
