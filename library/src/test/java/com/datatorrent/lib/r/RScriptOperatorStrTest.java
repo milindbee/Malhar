@@ -32,6 +32,7 @@ public class RScriptOperatorStrTest {
     public void testString(){
 
         oper.setScriptFilePath("r/aString.R");
+        oper.setFunctionName("aString");
         oper.setReturnVariable("retVal");
         oper.setRuntimeFileCopy(true);
 
