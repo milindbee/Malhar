@@ -42,16 +42,22 @@ import java.util.Map;
 
 /**
  * This operator enables a user to execute a R script on tuples for Map<String, Object>.
+ * The script should be in the form of a function. This function will then be called by the operator.
+ * The operator sources the file which contains the function (i.e. the script) during the starting
+ * phase. That enables it to have the function loaded in memory. This function is then called by the
+ * operator.
  * The user should -
- * 1. set the name of the return variable
- * 2. set the name of the script to be executed. Make sure that the script file
- *    is available in the classpath.
- * 3. Set whether the file should be copied on the node before executing i.e. if the file
+ * 1. set the nam eof the script file (which contains the script in the form of a function)
+ * 2. set the function name.
+ * 3. set the name of the return variable
+ * 4. set the name of the script to be executed.
+ * 5. Set whether the file should be copied on the node before executing i.e. if the file
  *    has been manually copied on the node in the cluster, this operator does not have to
  *    copy. If not, the operator should do so. The user needs to tell the operator either ways.
  *    By default, the operator assumes that the file is copied on the node in the right location.
- * 4. set the type of arguments being passed. This will be done in a Map.
- * 5. Send the data in the form of a tuple consisting of a key:value pair where,
+ *    If the operator is to copy hte file, make sure that the script file is available in the classpath.
+ * 6. set the type of arguments being passed. This will be done in a Map.
+ * 7. Send the data in the form of a tuple consisting of a key:value pair where,
  *      "key" represents the name of the argument
  *      "value" represents the actual value of the argument.
  * A map of all the arguments is created and passed as input.
@@ -59,9 +65,10 @@ import java.util.Map;
  * return value.
  *
  * <b> Sample Usage Code : </b>
- * oper is an object of type RScript.
+ *  oper is an object of type RScript.
  *
  *  oper.setScriptFilePath("<script name>");
+ *  oper.setFunctionName("<name of the function which has been given to the script inside he script file");
  *  oper.setReturnVariable("<name of the returned variable>");
  *  oper.setRuntimeFileCopy(false);
  *
@@ -95,6 +102,8 @@ import java.util.Map;
 
  public class RScript extends ScriptOperator {
 
+    private static final long serialVersionUID = 201401161205L;
+
     public Map<String, REXP_TYPE> getArgTypeMap() {
         return argTypeMap;
     }
@@ -117,6 +126,7 @@ import java.util.Map;
     @NotNull
     private Map<String, REXP_TYPE> argTypeMap;
 
+    // Lists to collect the tuples to be emitted on teh output port(s)
     private List<Integer> intList = new ArrayList<Integer>();
     private List<Double> doubleList = new ArrayList<Double>();
     private List<String> strList =new ArrayList<String>();
@@ -125,13 +135,27 @@ import java.util.Map;
     private List<Double[]> doubleArrayList = new ArrayList<Double[]>();
     private List<String[]> strArrayList = new ArrayList<String[]>();
 
+    // Name of the file to be created at runtime if 'runtimeFileCOpy' is set to 'true'.
     transient private String tmpFileName;
 
+    // Nam eof the return variable
     private String returnVariable;
+
+    // Function name given to the script inside the script file.
+    private String functionName;
+
+    // Is the script file already available on the node where it will be executed.
+    // If this this is set to 'true' it means that the script file is not available
+    // and should be copied onto the node at runtime.
+    //
+    // The default value is 'false' meaning the sys administrator has ensured that
+    // the script file is available on the node where this operator is running.
+    // Hence the operator does not have to copy the file at runtime.
+    //
     private boolean runtimeFileCopy = false;
     protected String scriptFilePath;
 
-    private Rengine rengine;
+    private transient Rengine rengine;
     private static Logger log = LoggerFactory.getLogger(RScript.class);
 
     @Override
@@ -139,12 +163,12 @@ import java.util.Map;
         return null;  //To change body of implemented methods use File | Settings | File Templates.
     }
 
-    // Gt the value of the name of the variable being returned
+    // Get the value of the name of the variable being returned
     public String getReturnVariable() {
         return returnVariable;
     }
 
-    // Set teh name for the return variable
+    // Set the name for the return variable
     public void setReturnVariable(String returnVariable) {
         this.returnVariable = returnVariable;
     }
@@ -167,6 +191,13 @@ import java.util.Map;
         this.runtimeFileCopy = runtimeFileCopy;
     }
 
+    public String getFunctionName() {
+        return functionName;
+    }
+
+    public void setFunctionName(String functionName) {
+        this.functionName = functionName;
+    }
     // Output port on which an int type of value is returned.
     @OutputPortFieldAnnotation(name = "intOutput")
     public final transient DefaultOutputPort<Integer> intOutput = new DefaultOutputPort<Integer>();
@@ -225,6 +256,13 @@ import java.util.Map;
 
             getFileName();
             writeStringAsFile(super.script, this.tmpFileName);
+        }
+
+        //Source the script file so as to load the function in memory
+        if(isRuntimeFileCopy()){
+            REXP result = rengine.eval("source(" + "\"" + this.tmpFileName + "\")");
+        } else {
+            REXP result = rengine.eval("source(\"" + getScriptFilePath() + "\")");
         }
     }
 
@@ -331,8 +369,6 @@ import java.util.Map;
 
             while ((numRead = reader.read(buf)) != -1) {
                 String readData = String.valueOf(buf, 0, numRead);
-                // Not needed if we are going to "source' the R script
-                //readData = readData.replace("\n", "; ");
                 fileData.append(readData);
 
                 buf = new char[1024];
@@ -428,12 +464,7 @@ import java.util.Map;
             }
         }
 
-        if(isRuntimeFileCopy()){
-            REXP result = rengine.eval("source(" + "\"" + this.tmpFileName + "\")");
-        } else {
-            REXP result = rengine.eval("source(\"" + getScriptFilePath() + "\")");
-        }
-
+        REXP result = rengine.eval("retVal<-" + getFunctionName() + "()");
         REXP retVal = rengine.eval(getReturnVariable());
 
         // Get the returned value and emit it on the appropriate output port depending
@@ -441,8 +472,6 @@ import java.util.Map;
         int len = 0;
         switch (retVal.rtype) {
             case REXP.INTSXP :
-//                int iData = retVal.asInt();
-//                intList.add(iData);
                 len = retVal.asIntArray().length;
                 int iData;
 
@@ -497,8 +526,7 @@ import java.util.Map;
                 break;
 
             default:
-                //<TBD> : Throw an exception for a data type not found
-                break;
+                throw new IllegalArgumentException("Unsupported data type (" + retVal.rtype + ") returned ... ");
         }
     }
 
