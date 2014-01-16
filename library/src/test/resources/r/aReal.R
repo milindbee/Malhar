@@ -8,5 +8,9 @@
 # num1 and num2 are passed as arguments by the client and retVal is the 
 # result returned by the script.
 
+aReal <- function(){
+
 retVal<-sum(num1, num2)
 return(as.double(retVal))
+
+}
