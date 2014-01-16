@@ -7,7 +7,9 @@
 # str1 and str2 are passed as arguments by the client and retVal is the result returned by the script.
 #
 
+aString <- function(){
 retVal<-c("abc")
+
 print(retVal)
 
 f<-function(a, b, c) {
@@ -16,6 +18,5 @@ f<-function(a, b, c) {
 }
 
 retVal<-f(str1, str2, seperator)
-
-print(retVal)
-retVal
+return(retVal)
+}
