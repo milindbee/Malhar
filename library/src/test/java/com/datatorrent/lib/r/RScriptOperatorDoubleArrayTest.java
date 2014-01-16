@@ -29,8 +29,8 @@ public class RScriptOperatorDoubleArrayTest {
     @Test
     public void testDoubleArray(){
 
-        //oper.setScriptFilePath("/home/hduser/work/Malhar-R/Malhar/library/src/test/resources/r/aDoubleVector.R");
         oper.setScriptFilePath("r/aDoubleVector.R");
+        oper.setFunctionName("DV");
         oper.setReturnVariable("retVal");
         oper.setRuntimeFileCopy(true);
 
