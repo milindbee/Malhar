@@ -25,21 +25,36 @@ WindowId.prototype = {
     
     toString: function() {
         // return formatter.windowFormatter(this);
-        return '<span title="' + this.value + '">' + this.offset + '</span>';
+        if (this.offset === '-') {
+            return '-';
+        } else if (this.offset === false) {
+            return '<span title="invalid window ID: ' + this.value + '">Invalid</span>';
+        }
+        return '<span class="window-id-display" title="timestamp: ' + this.timestamp.toLocaleString() + '">' + this.offset + '</span>';
     },
     
     set: function(value) {
         value = this.value = '' + value;
-	
+
+        // Check for initial values of 0 and -1
+        if (value === '-1' || value === '0') {
+            this.timestamp = '-';
+            this.offset = '-';
+            return;
+        }
+
         if (/[^0-9]/.test(value)) {
-            throw new Error('First parameter of WindowId must be numeric');
+            LOG(3, 'WindowId first param not in expected format: ', value);
+            this.timestamp = '-';
+            this.offset = false;
+            return;
         }
 	
         var full64 = new BigInteger(this.value);
     
-        this.timestamp = full64.shiftRight(32).toString() + '000';
+        this.timestamp = new Date((full64.shiftRight(32).toString() + '000') * 1);
     
-        this.offset = full64.and(new BigInteger('0x00000000ffffffff',16)).toString();
+        this.offset = full64.and(new BigInteger('0x00000000ffffffff',16)).toString() * 1;
     }
     
 };

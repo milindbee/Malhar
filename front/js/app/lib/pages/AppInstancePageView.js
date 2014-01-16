@@ -27,12 +27,11 @@ var InstanceOverviewWidget = require('../widgets/InstanceOverviewWidget');
 var PhysOpListWidget = require('../widgets/PhysOpListWidget');
 var LogicalOpListWidget = require('../widgets/LogicalOpListWidget');
 var CtnrListWidget = require('../widgets/CtnrListWidget');
-var OpChartWidget = require('../widgets/OpChartWidget');
 var AppMetricsWidget = require('../widgets/AppMetricsWidget');
 var RecListWidget = require('../widgets/RecListWidget');
 var StreamListWidget = require('../widgets/StreamListWidget');
 var AlertListWidget = require('../widgets/AlertListWidget');
-var AppDagWidget = require('../widgets/AppDagWidget');
+var PhysicalDagWidget = require('../widgets/PhysicalDagWidget');
 var LogicalDagWidget = require('../widgets/LogicalDagWidget');
 // var TopNWidget = DT.widgets.TopNWidget;
 
@@ -103,9 +102,7 @@ var AppInstancePageView = BasePageView.extend({
                     defaultId: 'info',
                     view: InstanceInfoWidget, 
                     inject: {
-                        model: function() {
-                            return this.model;
-                        }
+                        model: this.model
                     }
                 },
                 {
@@ -113,9 +110,7 @@ var AppInstancePageView = BasePageView.extend({
                     defaultId: 'actions',
                     view: InstanceActionWidget, 
                     inject: {
-                        model: function() {
-                            return this.model;
-                        },
+                        model: this.model,
                         dataSource: this.dataSource
                     }
                 },
@@ -124,9 +119,7 @@ var AppInstancePageView = BasePageView.extend({
                     defaultId: 'overview',
                     view: InstanceOverviewWidget, 
                     inject: {
-                        model: function() {
-                            return this.model;
-                        }
+                        model: this.model
                     }
                 },
                 {
@@ -136,12 +129,8 @@ var AppInstancePageView = BasePageView.extend({
                     limit: 1, 
                     inject: {
                         dataSource:this.dataSource, 
-                        operators: function() {
-                            return this.model.operators;
-                        }, 
-                        appId: function() {
-                            return this.model.get('id');
-                        }, 
+                        operators: this.model.operators,
+                        appId: pageParams.appId, 
                         nav: this.app.nav
                     }
                 },
@@ -154,7 +143,10 @@ var AppInstancePageView = BasePageView.extend({
                         pageParams: pageParams,
                         nav: this.app.nav,
                         dataSource: this.dataSource,
-                        collection: this.getLogicalOperators.bind(this)
+                        collection: this.getLogicalOperators.bind(this),
+                        onRemove: _.bind(function() {
+                            return this.decrementLogicalOperators.bind(this)
+                        }, this)
                     }
                 },
                 {
@@ -164,24 +156,18 @@ var AppInstancePageView = BasePageView.extend({
                     limit: 1,
                     inject: {
                         dataSource: this.dataSource,
-                        containers: function() {
-                            return this.model.containers
-                        },
-                        instance: function() {
-                            return this.model
-                        },
+                        containers: this.model.containers,
+                        instance: this.model,
                         nav: this.app.nav
                     }
                 },
                 {
                     name: 'appMetrics',
-                    defaultId: 'chart',
+                    defaultId: 'metrics',
                     view: AppMetricsWidget, 
                     inject: { 
                         dataSource:this.dataSource,
-                        model: function() {
-                            return this.model
-                        } 
+                        model: this.model
                     }
                 },
                 {
@@ -201,63 +187,54 @@ var AppInstancePageView = BasePageView.extend({
                     limit: 1, 
                     inject: {
                         dataSource: this.dataSource,
-                        model: function() {
-                            return this.model
-                        },
+                        model: this.model,
                         nav: this.app.nav,
                         pageParams: pageParams
                     }
                 },
-                {
-                    name: 'operatorChart',
-                    defaultId: 'operator chart',
-                    view: OpChartWidget,
-                    limit: 0, 
-                    inject: {
-                        dataSource: this.dataSource,
-                        model: function() {
-                            return this.model
-                        }
-                    }
-                },
+                // {
+                //     name: 'operatorChart',
+                //     defaultId: 'operator chart',
+                //     view: OpChartWidget,
+                //     limit: 0, 
+                //     inject: {
+                //         dataSource: this.dataSource,
+                //         model: this.model
+                //     }
+                // },
                 {
                     name: 'alerts',
                     defaultId: 'alert list',
                     view: AlertListWidget,
                     limit: 0,
                     inject: {
-                    appId: function() {
-                        return this.model.get('id')
+                        appId: pageParams.appId
                     }
-                }},
+                },
                 {
-                    name: 'appDag',
+                    name: 'logicalDAG',
                     defaultId: 'logical DAG',
                     view: LogicalDagWidget,
                     limit: 0,
                         inject: {
                         dataSource: this.dataSource,
-                        operators: function() {
-                            return this.model.operators;
-                        },
-                        model: function() {
-                            return this.model
-                        },
+                        operators: this.model.operators,
+                        model: this.model,
                         collection: this.getLogicalOperators.bind(this),
-                        appId: pageParams.appId
+                        appId: pageParams.appId,
+                        onRemove: _.bind(function() {
+                            return this.decrementLogicalOperators.bind(this)
+                        }, this)
                     }
                 },
                 {
-                    name: 'physDag',
+                    name: 'physicalDAG',
                     defaultId: 'physical DAG',
-                    view: AppDagWidget,
+                    view: PhysicalDagWidget,
                     limit: 0,
                     inject: {
                         dataSource: this.dataSource,
-                        physicalPlan: true,
-                        model: function() {
-                            return this.model
-                        }
+                        model: this.model
                     }
                 },
                 // {
@@ -283,9 +260,7 @@ var AppInstancePageView = BasePageView.extend({
                     defaultId: 'defaultId',
                     view: InstanceInfoWidget,
                     inject: {
-                        model: function() {
-                            return this.model
-                        }
+                        model: this.model
                     }
                 },
                 {
@@ -293,9 +268,7 @@ var AppInstancePageView = BasePageView.extend({
                     defaultId: 'defaultId',
                     view: InstanceOverviewWidget,
                     inject: {
-                        model: function() {
-                            return this.model
-                        }
+                        model: this.model
                     }
                 },
                 {
@@ -327,7 +300,7 @@ var AppInstancePageView = BasePageView.extend({
                 { widget: 'instanceInfo', id: 'info', width: 60 },
                 { widget: 'instanceAction', id: 'actions', width: 40 },
                 { widget: 'instanceOverview', id: 'overview' },
-                { widget: 'appDag', id: 'logical DAG' },
+                { widget: 'logicalDAG', id: 'logical DAG' },
                 { widget: 'logicalOperatorList', id: 'logical operators' },
                 { widget: 'appMetrics', id: 'metrics', width: 60 },
                 { widget: 'streamList', id: 'stream list', width: 40 },
@@ -350,7 +323,7 @@ var AppInstancePageView = BasePageView.extend({
             dash_id: 'physical-dag-view',
             widgets: [
                 { widget: 'instanceInfo', id: 'info' },
-                { widget: 'physDag', id: 'appDag' }
+                { widget: 'physicalDAG', id: 'physical DAG' }
             ]
         },
         {
@@ -387,7 +360,11 @@ var AppInstancePageView = BasePageView.extend({
         BasePageView.prototype.cleanUp.call(this);
     },
 
+    logicalOperatorDependencyCount: 0,
+
     getLogicalOperators: function() {
+
+        ++this.logicalOperatorDependencyCount;
 
         if (!this.logicalOperators) {
             this.logicalOperators = new LogicalOperatorCollection([], {
@@ -421,6 +398,13 @@ var AppInstancePageView = BasePageView.extend({
         }
 
         return this.logicalOperators;
+    },
+
+    decrementLogicalOperators: function() {
+        --this.logicalOperatorDependencyCount;
+        if (this.logicalOperatorDependencyCount <= 0) {
+            this.logicalOperators.stopListening();
+        }
     }
     
 });

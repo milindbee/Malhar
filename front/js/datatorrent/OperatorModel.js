@@ -27,13 +27,12 @@ var OperatorModel = BaseModel.extend({
     debugName: 'operator',
     
     defaults: {
+        'appId': '',
         'className': '',
         'container': '',
         'cpuPercentageMA': '',
-        'currentWindowId': '',
-        'recoveryWindowId': '',
-        'recoveryWindowId_f': new WindowId('0'),
-        'currentWindowId_f': new WindowId('0'),
+        'recoveryWindowId': new WindowId('0'),
+        'currentWindowId': new WindowId('0'),
         'failureCount': '',
         'host': '',
         'id': '',
@@ -53,10 +52,6 @@ var OperatorModel = BaseModel.extend({
         var obj = this.toJSON();
         
         if ( !noFormat ) {
-            // Update WindowIds
-            _.each(['recoveryWindowId', 'currentWindowId'], function(key) {
-                obj[key + '_f'].set(obj[key]);
-            }, this);
             
             // Make comma group formatting
             _.each(['totalTuplesEmitted','tuplesEmittedPSMA','totalTuplesProcessed','tuplesProcessedPSMA'], function(key){
@@ -89,6 +84,22 @@ var OperatorModel = BaseModel.extend({
             this.trigger('update');
         });
         this.dataSource.subscribe(topic);
+    },
+
+    isRecording: function() {
+        var startTimeRE = /^\d+$/;
+        if (startTimeRE.test(this.get('recordingStartTime'))) {
+            return true;
+        }
+        return _.some(this.get('ports'), function(port) {
+            return startTimeRE.test(port.recordingStartTime);
+        });
+    },
+
+    toJSON: function() {
+        var json = BaseModel.prototype.toJSON.call(this);
+        json.isRecording = this.isRecording();
+        return json;
     }
     
 });

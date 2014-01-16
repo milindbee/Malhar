@@ -24,9 +24,33 @@ var timeSince = Bormats.timeSince;
 exports.timeSince = function(value) {
     if (/^\d+$/.test(value)) {
         var newVal = timeSince(value) || "a moment";
-        return newVal + " ago";
+        return '<span title="' + new Date(value * 1).toLocaleString() + '">' + newVal + ' ago</span>';
     }
     return value;
+}
+
+exports.unixUptime = function(value) {
+	if (/^\d+$/.test(value)) {
+        var newVal = timeSince({
+        	timeStamp: value,
+        	unixUptime: true
+        }) || "a moment ago";
+        return newVal;
+    }
+    return value;	
+}
+
+exports.timeStamp = function(value) {
+
+	var now = +new Date();
+	value *= 1;
+
+	// if more than a day ago, do full date
+	if ( now - value > 1000*60*60*24 ) {
+		return new Date(value).toLocaleString();
+	} else {
+		return new Date(value).toLocaleTimeString();
+	}
 }
 
 exports.commaInt = Bormats.commaGroups;

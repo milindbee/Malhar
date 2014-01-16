@@ -182,19 +182,6 @@ describe("the Tabled module", function() {
             assert(column.get('width') != 0, 'validation did not stop setting a bad width value');
         });
         
-        it("should be resizable by the .resize-table element", function() {
-            var table = $(".tabled", this.$pg);
-            var old = table.width();
-            var resizer = $(".resize-table", this.$pg);
-            assert(resizer, "table resizer should exist");
-            var mousedownEvt = $.Event("mousedown", {clientX: 0});
-            var mousemoveEvt = $.Event("mousemove", {clientX: 10});
-            resizer.trigger(mousedownEvt);
-            $(window).trigger(mousemoveEvt);
-            $(window).trigger($.Event('mouseup', {clientX: 10}));
-            assert.equal(old + 10 + 1, table.width(), "should have changed widths, plus 1 for firefox");
-        })
-        
         it("rows should update when the models change", function() {
             var before = $(".td.col-age:eq(0)", this.$pg).text();
             this.collection.at(0).set("age", 25);
@@ -569,9 +556,9 @@ describe("the Tabled module", function() {
             var now = +new Date();
             var one_second_ago = now - 1000;
             var one_day_ago = now - 86400000;
-            assert.equal(timeSince(now),"a moment ago");
-            assert.equal(timeSince(one_second_ago),"1 second ago");
-            assert.equal(timeSince(one_day_ago),"1 day ago");
+            expect(timeSince(now)).to.match(/<span title="[\w\d\s:]{10,}">a moment ago<\/span>/);
+            expect(timeSince(one_second_ago)).to.match(/<span title="[\w\d\s:]{10,}">1 second ago<\/span>/);
+            expect(timeSince(one_day_ago)).to.match(/<span title="[\w\d\s:]{10,}">1 day ago<\/span>/);
         });
         afterEach(function() {
             delete this.Formats;

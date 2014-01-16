@@ -17,13 +17,13 @@ package com.datatorrent.demos.mrmonitor;
 
 import java.io.IOException;
 
-import org.codehaus.jettison.json.JSONObject;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.ResponseHandler;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.BasicResponseHandler;
 import org.apache.http.impl.client.DefaultHttpClient;
+import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,7 +38,12 @@ public class Util
 {
 
   private static final Logger logger = LoggerFactory.getLogger(Util.class);
-
+  
+  /**
+   * This method returns the response content for a given url
+   * @param url
+   * @return
+   */
   public static String getJsonForURL(String url)
   {
     HttpClient httpclient = new DefaultHttpClient();
@@ -70,6 +75,11 @@ public class Util
     }
   }
 
+  /**
+   * This method returns the JSONObject for a given string
+   * @param json
+   * @return
+   */
   public static JSONObject getJsonObject(String json)
   {
     try {
@@ -80,5 +90,5 @@ public class Util
       return null;
     }
   }
-
+  
 }
