@@ -30,6 +30,7 @@ public class RScriptOperatorRealTest {
     public void testReal(){
 
         oper.setScriptFilePath("r/aReal.R");
+        oper.setFunctionName("aReal");
         oper.setReturnVariable("retVal");
         oper.setRuntimeFileCopy(true);
 
