@@ -33,7 +33,9 @@ public class RScriptOperatorIntTest {
     @Test
     public void testInt(){
 
+//        oper.setScriptFilePath("r/anInteger.R");
         oper.setScriptFilePath("r/anInteger.R");
+        oper.setFunctionName("anInteger");
         oper.setReturnVariable("retVal");
         oper.setRuntimeFileCopy(true);
 
