@@ -29,9 +29,11 @@ public class RScriptLinearRegressionPredictorTest {
     @Test
     public void testLinearRegressionPrediction(){
 
-        oper.setScriptFilePath("r/model.R");
+//        oper.setScriptFilePath("r/model.R");
+        oper.setScriptFilePath("/home/hduser/model.R");
+        oper.setFunctionName("model");
         oper.setReturnVariable("retVal");
-        oper.setRuntimeFileCopy(true);
+        oper.setRuntimeFileCopy(false);
 
         oper.setup(null);
         oper.beginWindow(0);
