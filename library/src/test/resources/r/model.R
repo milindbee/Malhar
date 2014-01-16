@@ -11,27 +11,30 @@
 # would be derived and returned.
 #
 
-datavar = data.frame(YEAR, ROLL, UNEM, HGRAD, INC)
+ model <- function() {
 
-#attach data variable
-attach(datavar)
+ datavar = data.frame(YEAR, ROLL, UNEM, HGRAD, INC)
 
-#display all data
-datavar
+ #attach data variable
+ attach(datavar)
 
-#create a linear model using lm(FORMULA, DATAVAR)
-#predict the fall enrollment (ROLL) using the unemployment rate (UNEM)
-linearModelVar <- lm(ROLL ~ UNEM, datavar)
+ #display all data
+ datavar
 
-#display linear model
-linearModelVar
+ #create a linear model using lm(FORMULA, DATAVAR)
+ #predict the fall enrollment (ROLL) using the unemployment rate (UNEM)
+ linearModelVar <- lm(ROLL ~ UNEM, datavar)
 
-# Get the values of the intercept and unemployment so as to be able to predict the enrolment
-interc<-linearModelVar$coeff[["(Intercept)"]]
-unemp<-linearModelVar$coeff[["UNEM"]]
+ #display linear model
+ linearModelVar
 
-# Calculate the enrollment based on teh percentage being asked for, and the model that has been reated above.
-enroll<-(interc+(unemp * PERCENT))
-retVal<-enroll
-return(retVal)
+ # Get the values of the intercept and unemployment so as to be able to predict the enrolment
+ interc<-linearModelVar$coeff[["(Intercept)"]]
+ unemp<-linearModelVar$coeff[["UNEM"]]
+
+ # Calculate the enrollment based on teh percentage being asked for, and the model that has been reated above.
+ enroll<-(interc+(unemp * PERCENT))
+ retVal<-enroll
+ return(retVal)
+ }
 
