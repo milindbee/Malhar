@@ -11,6 +11,7 @@
 # num1 and num2 are passed as arguments by the client and retVal is the 
 # result returned by the script.
 
+DV <- function() {
 retVal<-num1+num2
 
 ret1<-cbind(num1, num2)
@@ -21,3 +22,4 @@ tmatmul<-t(matmul)
 retVal<-tmatmul[,1]
 
 return(as.double(retVal))
+}
