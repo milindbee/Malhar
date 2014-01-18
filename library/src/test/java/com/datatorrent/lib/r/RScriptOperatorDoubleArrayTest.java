@@ -24,15 +24,15 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class RScriptOperatorDoubleArrayTest {
-    RScript oper = new RScript();
+    RScript oper = new RScript("r/aDoubleVector.R", "DV", "retVal");
 
     @Test
     public void testDoubleArray(){
 
-        oper.setScriptFilePath("r/aDoubleVector.R");
-        oper.setFunctionName("DV");
-        oper.setReturnVariable("retVal");
-        oper.setRuntimeFileCopy(true);
+//        oper.setScriptFilePath("r/aDoubleVector.R");
+//        oper.setFunctionName("DV");
+//        oper.setReturnVariable("retVal");
+//        oper.setRuntimeFileCopy(true);
 
         oper.setup(null);
         oper.beginWindow(0);
