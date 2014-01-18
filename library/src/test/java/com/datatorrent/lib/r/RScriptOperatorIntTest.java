@@ -28,16 +28,16 @@ import java.util.Map;
 
 public class RScriptOperatorIntTest {
 
-    RScript oper = new RScript();
+    RScript oper = new RScript("r/anInteger.R", "anInteger","retVal");
 
     @Test
     public void testInt(){
 
 //        oper.setScriptFilePath("r/anInteger.R");
-        oper.setScriptFilePath("r/anInteger.R");
-        oper.setFunctionName("anInteger");
-        oper.setReturnVariable("retVal");
-        oper.setRuntimeFileCopy(true);
+//        oper.setScriptFilePath("r/anInteger.R");
+//        oper.setFunctionName("anInteger");
+//        oper.setReturnVariable("retVal");
+//        oper.setRuntimeFileCopy(true);
 
         oper.setup(null);
         oper.beginWindow(0);
