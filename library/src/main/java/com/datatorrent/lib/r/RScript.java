@@ -23,12 +23,7 @@ import com.datatorrent.api.annotation.InputPortFieldAnnotation;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
 import com.datatorrent.lib.script.ScriptOperator;
 import org.apache.commons.lang.mutable.MutableDouble;
-import org.rosuda.JRI.REXP;
-import org.rosuda.JRI.Rengine;
-import org.rosuda.REngine.JRI.JRIEngine;
-import org.rosuda.REngine.REXPMismatchException;
-import org.rosuda.REngine.REngine;
-import org.rosuda.REngine.REngineException;
+import org.rosuda.REngine.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,21 +38,14 @@ import java.util.Map;
 /**
  * This operator enables a user to execute a R script on tuples for Map<String, Object>.
  * The script should be in the form of a function. This function will then be called by the operator.
- * The operator sources the file which contains the function (i.e. the script) during the starting
- * phase. That enables it to have the function loaded in memory. This function is then called by the
- * operator.
+ *
  * The user should -
- * 1. set the nam eof the script file (which contains the script in the form of a function)
+ * 1. set the name of the script file (which contains the script in the form of a function)
  * 2. set the function name.
  * 3. set the name of the return variable
- * 4. set the name of the script to be executed.
- * 5. Set whether the file should be copied on the node before executing i.e. if the file
- *    has been manually copied on the node in the cluster, this operator does not have to
- *    copy. If not, the operator should do so. The user needs to tell the operator either ways.
- *    By default, the operator assumes that the file is copied on the node in the right location.
- *    If the operator is to copy hte file, make sure that the script file is available in the classpath.
- * 6. set the type of arguments being passed. This will be done in a Map.
- * 7. Send the data in the form of a tuple consisting of a key:value pair where,
+ * 4. Make sure that the script file is available in the classpath.
+ * 5. set the type of arguments being passed. This will be done in a Map.
+ * 6. Send the data in the form of a tuple consisting of a key:value pair where,
  *      "key" represents the name of the argument
  *      "value" represents the actual value of the argument.
  * A map of all the arguments is created and passed as input.
@@ -70,7 +58,6 @@ import java.util.Map;
  *  oper.setScriptFilePath("<script name>");
  *  oper.setFunctionName("<name of the function which has been given to the script inside he script file");
  *  oper.setReturnVariable("<name of the returned variable>");
- *  oper.setRuntimeFileCopy(false);
  *
  *  Map<String, RScript.REXP_TYPE> argTypeMap = new HashMap<String, RScript.REXP_TYPE>();
  *  argTypeMap.put(<argument name>, RScript.<argument type in the form of REXP_TYPE>);
@@ -92,7 +79,7 @@ import java.util.Map;
  *
  *  Pass this 'map' to the operator now.
  *
- *  Currently, support has been added for only int, real and string type of values and the corresonding arrays
+ *  Currently, support has been added for only int, real, string and boolean type of values and the corresponding arrays
  *  to be passed and returned from the R scripts.
  *
  *
@@ -100,9 +87,9 @@ import java.util.Map;
  * */
 
 
- public class RScript extends ScriptOperator {
+public class RScript extends ScriptOperator {
 
-    private static final long serialVersionUID = 201401161205L;
+//    private static final long serialVersionUID = 201401161205L;
 
     public Map<String, REXP_TYPE> getArgTypeMap() {
         return argTypeMap;
@@ -114,7 +101,7 @@ import java.util.Map;
 
     public enum REXP_TYPE {
         REXP_INT(1), REXP_DOUBLE(2), REXP_STR(3), REXP_BOOL(6),
-        REXP_ARRAY_INT(32), REXP_ARRAY_DOUBLE(33), REXP_ARRAY_STR(34);
+        REXP_ARRAY_INT(32), REXP_ARRAY_DOUBLE(33), REXP_ARRAY_STR(34), REXP_ARRAY_BOOL(36);
 
         private int value;
 
@@ -130,15 +117,17 @@ import java.util.Map;
     private List<Integer> intList = new ArrayList<Integer>();
     private List<Double> doubleList = new ArrayList<Double>();
     private List<String> strList =new ArrayList<String>();
+    private List<Boolean> boolList = new ArrayList<Boolean>();
 
     private List<Integer[]> intArrayList = new ArrayList<Integer[]>();
     private List<Double[]> doubleArrayList = new ArrayList<Double[]>();
     private List<String[]> strArrayList = new ArrayList<String[]>();
+    private List<Boolean[]> boolArrayList = new ArrayList<Boolean[]>();
 
-    // Name of the file to be created at runtime if 'runtimeFileCOpy' is set to 'true'.
-    transient private String tmpFileName;
+    // Name of the file to be created at runtime. This temp. file will be created by reading the script available in teh class path.
+    private transient String tmpFileName;
 
-    // Nam eof the return variable
+    // Name of the return variable
     private String returnVariable;
 
     // Function name given to the script inside the script file.
@@ -152,11 +141,22 @@ import java.util.Map;
     // the script file is available on the node where this operator is running.
     // Hence the operator does not have to copy the file at runtime.
     //
-    private boolean runtimeFileCopy = false;
     protected String scriptFilePath;
 
-    private transient Rengine rengine;
+    private transient REngine rengine;
     private static Logger log = LoggerFactory.getLogger(RScript.class);
+
+    public RScript()
+    {
+    }
+
+    public RScript(String rScriptFilePath, String rFunction, String returnVariable)
+    {
+        this.setScriptFilePath(rScriptFilePath);
+        super.setScript(readFileAsString());
+        this.setFunctionName(rFunction);
+        this.setReturnVariable(returnVariable);
+    }
 
     @Override
     public Map<String, Object> getBindings() {
@@ -183,15 +183,7 @@ import java.util.Map;
         this.scriptFilePath = scriptFilePath;
     }
 
-    public boolean isRuntimeFileCopy() {
-        return runtimeFileCopy;
-    }
-
-    public void setRuntimeFileCopy(boolean runtimeFileCopy) {
-        this.runtimeFileCopy = runtimeFileCopy;
-    }
-
-    public String getFunctionName() {
+     public String getFunctionName() {
         return functionName;
     }
 
@@ -210,7 +202,11 @@ import java.util.Map;
     // Output port on which an string type of value is returned.
     @OutputPortFieldAnnotation(name = "strOutput")
     public final transient DefaultOutputPort<String> strOutput = new DefaultOutputPort<String>();
-    //public final transient DefaultOutputPort<Map<String, Object>> strOutput = new DefaultOutputPort<Map<String, Object>>();
+
+    // Output port on which a boolean type of value is returned.
+    @OutputPortFieldAnnotation(name = "boolOutput")
+    public final transient DefaultOutputPort<Boolean> boolOutput = new DefaultOutputPort<Boolean>();
+
 
 
     // Output port on which an array of type int is returned.
@@ -224,6 +220,11 @@ import java.util.Map;
     // Output port on which an array of type str is returned.
     @OutputPortFieldAnnotation(name = "strArrayOutput")
     public final transient DefaultOutputPort<String[]> strArrayOutput = new DefaultOutputPort<String[]>();
+
+    // Output port on which an array of type boolean is returned.
+    @OutputPortFieldAnnotation(name = "boolArrayOutput")
+    public final transient DefaultOutputPort<Boolean[]> boolArrayOutput = new DefaultOutputPort<Boolean[]>();
+
 
     /**
      * Process the tuples
@@ -242,27 +243,19 @@ import java.util.Map;
     public void setup(Context.OperatorContext context) {
         super.setup(context);
 
-        // new R-engine
-        rengine=new Rengine(new String [] {"--vanilla"}, false, null);
-        if (!rengine.waitForR())
-        {
-            log.debug(String.format( "\nCannot load R"));
-            throw new RuntimeException("Cannot load R");
-        }
+        try {
+            String[] args = {"--vanilla"};
 
-        super.setScript(readFileAsString());
-
-        if(this.isRuntimeFileCopy()){
+            // new R-engine
+            this.rengine = REngine.engineForClass("org.rosuda.REngine.JRI.JRIEngine", args, null, false);
 
             getFileName();
             writeStringAsFile(super.script, this.tmpFileName);
-        }
 
-        //Source the script file so as to load the function in memory
-        if(isRuntimeFileCopy()){
-            REXP result = rengine.eval("source(" + "\"" + this.tmpFileName + "\")");
-        } else {
-            REXP result = rengine.eval("source(\"" + getScriptFilePath() + "\")");
+            REXP result = rengine.parseAndEval(super.script);
+
+        } catch (Exception exc) {
+            log.error("Exception: ", exc);
         }
     }
 
@@ -285,6 +278,16 @@ import java.util.Map;
         }
         doubleList.clear();
 
+        for (int i=0; i<strList.size(); i++) {
+            strOutput.emit(strList.get(i));
+        }
+        strList.clear();
+
+        for (int i=0; i<boolList.size(); i++) {
+            boolOutput.emit(boolList.get(i));
+        }
+        boolList.clear();
+
         for (int i=0; i<intArrayList.size(); i++) {
             intArrayOutput.emit(intArrayList.get(i));
         }
@@ -300,11 +303,11 @@ import java.util.Map;
         }
         strArrayList.clear();
 
-
-        for (int i=0; i<strList.size(); i++) {
-            strOutput.emit(strList.get(i));
+        for (int i=0; i<boolArrayList.size(); i++) {
+            boolArrayOutput.emit(boolArrayList.get(i));
         }
-        strList.clear();
+        boolArrayList.clear();
+
 
         return;
     }
@@ -317,17 +320,13 @@ import java.util.Map;
     @Override
     public void teardown() {
 
-        if(this.isRuntimeFileCopy()){
-
-            File file = new File(this.tmpFileName);
-            if (!file.delete()) {
-                throw new RuntimeException("Error deleting file : " + this.tmpFileName);
-            }
+        File file = new File(this.tmpFileName);
+        if (!file.delete()) {
+            throw new RuntimeException("Error deleting file : " + this.tmpFileName);
         }
 
-
         if (rengine != null){
-            rengine.end();
+            rengine.close();
         }
     }
 
@@ -356,13 +355,7 @@ import java.util.Map;
         try {
 
             BufferedReader reader;
-
-            if(isRuntimeFileCopy()){
-                reader = new BufferedReader(new InputStreamReader(this.getClass().getClassLoader().getResourceAsStream(this.scriptFilePath)));
-            } else {
-                reader = new BufferedReader(new FileReader(this.getScriptFilePath()));
-            }
-
+            reader = new BufferedReader(new InputStreamReader(this.getClass().getClassLoader().getResourceAsStream(this.scriptFilePath)));
 
             char[] buf = new char[1024];
             int numRead = 0;
@@ -424,111 +417,119 @@ import java.util.Map;
 
     public void processTuple(Map<String, Object> tuple){
 
-        for (Map.Entry<String, Object> entry : tuple.entrySet()) {
-            String key = entry.getKey();
-            Object value = entry.getValue();
+        try {
+            for (Map.Entry<String, Object> entry : tuple.entrySet()) {
+                String key = entry.getKey();
+                Object value = entry.getValue();
 
-            switch (argTypeMap.get(key)) {
-                case REXP_INT:
-                    int[] iArr = new int[1];
-                    iArr[0] = (Integer)value;
-                    rengine.assign(key, new REXP(REXP.XT_INT, iArr));
-                    break;
-                case REXP_DOUBLE:
-                    double[] dArr = new double[1];
-                    dArr[0] = (Double)value;
-                    rengine.assign(key, new REXP(REXP.XT_DOUBLE, dArr));
-                    break;
-                case REXP_STR:
-                    String[] sArr = new String[1];
-                    sArr[0] = (String)value;
-                    rengine.assign(key, new REXP(REXP.XT_STR, sArr));
-                    break;
-                case REXP_BOOL:
-                    int[] bArr = new int[1];
-                    bArr[0] = (Integer)value;
-                    rengine.assign(key, new REXP(REXP.XT_BOOL, bArr));
-                    break;
-                case REXP_ARRAY_INT:
-                    rengine.assign(key, new REXP(REXP.XT_ARRAY_INT, value));
-                    break;
-                case REXP_ARRAY_DOUBLE:
-                    rengine.assign(key, new REXP(REXP.XT_ARRAY_DOUBLE, value));
-                    break;
-                case REXP_ARRAY_STR:
-                    rengine.assign(key, new REXP(REXP.XT_ARRAY_STR, value));
-                    break;
-                default:
-                    //<TBD> Log error
-                    break;
+                switch (argTypeMap.get(key)) {
+                    case REXP_INT:
+                        int[] iArr = new int[1];
+                        iArr[0] = (Integer)value;
+                        rengine.assign(key, new REXPInteger(iArr));
+                        break;
+                    case REXP_DOUBLE:
+                        double[] dArr = new double[1];
+                        dArr[0] = (Double)value;
+                        rengine.assign(key, new REXPDouble(dArr));
+                        break;
+                    case REXP_STR:
+                        String[] sArr = new String[1];
+                        sArr[0] = (String)value;
+                        rengine.assign(key, new REXPString(sArr));
+                        break;
+                    case REXP_BOOL:
+                        Boolean[] bArr = new Boolean[1];
+                        bArr[0] = (Boolean)value;
+                        rengine.assign(key, new REXPLogical(bArr[0]));
+                        break;
+                    case REXP_ARRAY_INT:
+                        rengine.assign(key, new REXPInteger((int[])value));
+                        break;
+                    case REXP_ARRAY_DOUBLE:
+                        rengine.assign(key, new REXPDouble((double[])value));
+                        break;
+                    case REXP_ARRAY_STR:
+                        rengine.assign(key, new REXPString((String[])value));
+                        break;
+                    case REXP_ARRAY_BOOL:
+                        rengine.assign(key, new REXPLogical((boolean[])value));
+                        break;
+                    default:
+                        throw new IllegalArgumentException("Unsupported data type ... ");
+                }
             }
-        }
 
-        REXP result = rengine.eval("retVal<-" + getFunctionName() + "()");
-        REXP retVal = rengine.eval(getReturnVariable());
+            REXP result = rengine.parseAndEval("retVal<-" + getFunctionName() + "()");
+            REXP retVal = rengine.parseAndEval(getReturnVariable());
 
-        // Get the returned value and emit it on the appropriate output port depending
-        // on its datatype.
-        int len = 0;
-        switch (retVal.rtype) {
-            case REXP.INTSXP :
-                len = retVal.asIntArray().length;
+            // Get the returned value and emit it on the appropriate output port depending
+            // on its datatype.
+            int len = 0;
+
+
+            if (retVal.isInteger()) {
+                len = retVal.length();
                 int iData;
 
                 if (len > 1){
 
                     Integer[] iAList = new Integer[len];
                     for (int i=0; i<len; i++) {
-                        iAList[i] = (retVal.asIntArray()[i]);
+                        iAList[i] = (retVal.asIntegers()[i]);
                     }
                     intArrayList.add(iAList);
                 }else {
-                    iData = retVal.asInt();
+                    iData = retVal.asInteger();
                     intList.add(iData);
                 }
+            } else if (retVal.isNumeric()) {
 
-                break;
-
-            case REXP.REALSXP :
-                len = retVal.asDoubleArray().length;
+                len = retVal.length();
                 double dData;
 
                 if (len > 1){
 
                     Double[] dAList = new Double[len];
                     for (int i=0; i<len; i++) {
-                        dAList[i] = (retVal.asDoubleArray()[i]);
+                        dAList[i] = (retVal.asDoubles()[i]);
                     }
                     doubleArrayList.add(dAList);
                 }else {
                     dData = retVal.asDouble();
                     doubleList.add(dData);
                 }
-
-                break;
-
-            case REXP.STRSXP:
-                len = retVal.asStringArray().length;
+            } else if (retVal.isString()) {
+                len = retVal.length();
                 String sData;
 
                 if (len > 1){
-
-                    String[] sAList = new String[len];
-                    for (int i=0; i<len; i++) {
-                        sAList[i] = (retVal.asStringArray()[i]);
-                    }
-                    strArrayList.add(sAList);
+                    strArrayList.add(retVal.asStrings());
                 }else {
                     sData = retVal.asString();
                     strList.add(sData);
                 }
+            } else if (retVal.isLogical()){
+                len = retVal.length();
+                boolean[] bData = new boolean[len];
 
-                break;
+                if (len > 1){
+                   Boolean[] bAList = new Boolean[len];
+                    for (int i=0; i<len; i++) {
+                        bAList[i] = ((REXPLogical)retVal).isTRUE()[i];
+                    }
+                    boolArrayList.add(bAList);
+                }else {
+                    bData = (((REXPLogical)retVal).isTRUE());
+                    boolList.add(bData[0]);
+                }
 
-            default:
-                throw new IllegalArgumentException("Unsupported data type (" + retVal.rtype + ") returned ... ");
+            }else {
+                throw new IllegalArgumentException("Unsupported data type returned ... ");
+            }
+        } catch (Exception exc) {
+            log.error("Rexc: " , exc);
         }
     }
-
 }
 
