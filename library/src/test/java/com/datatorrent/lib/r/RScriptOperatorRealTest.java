@@ -24,15 +24,15 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class RScriptOperatorRealTest {
-    RScript oper = new RScript();
+    RScript oper = new RScript("r/aReal.R", "aReal", "retVal");
 
     @Test
     public void testReal(){
 
-        oper.setScriptFilePath("r/aReal.R");
-        oper.setFunctionName("aReal");
-        oper.setReturnVariable("retVal");
-        oper.setRuntimeFileCopy(true);
+//        oper.setScriptFilePath("r/aReal.R");
+//        oper.setFunctionName("aReal");
+//        oper.setReturnVariable("retVal");
+//        oper.setRuntimeFileCopy(true);
 
         oper.setup(null);
         oper.beginWindow(0);
