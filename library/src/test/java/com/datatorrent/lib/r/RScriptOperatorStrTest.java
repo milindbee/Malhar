@@ -26,15 +26,15 @@ import java.util.Map;
 
 public class RScriptOperatorStrTest {
 
-    RScript oper = new RScript();
+    RScript oper = new RScript("r/aString.R","aString", "retVal");
 
     @Test
     public void testString(){
 
-        oper.setScriptFilePath("r/aString.R");
-        oper.setFunctionName("aString");
-        oper.setReturnVariable("retVal");
-        oper.setRuntimeFileCopy(true);
+//        oper.setScriptFilePath("r/aString.R");
+//        oper.setFunctionName("aString");
+//        oper.setReturnVariable("retVal");
+//        oper.setRuntimeFileCopy(true);
 
         oper.setup(null);
         oper.beginWindow(0);
