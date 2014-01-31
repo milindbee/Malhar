@@ -24,6 +24,10 @@ import com.datatorrent.api.annotation.InputPortFieldAnnotation;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
 import com.datatorrent.lib.util.BaseNumberValueOperator;
 import org.rosuda.JRI.Rengine;
+import org.rosuda.REngine.REXP;
+import org.rosuda.REngine.REXPMismatchException;
+import org.rosuda.REngine.REngine;
+import org.rosuda.REngine.REngineException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,8 +52,8 @@ import java.util.List;
 
 public class RMax<V extends Number> extends BaseNumberValueOperator<Number> implements Unifier<Number>{
     private List<Number> numList = new ArrayList<Number>();
-    private Rengine rengine;
 
+    private transient REngine rengine;
     private static Logger log = LoggerFactory.getLogger(RMax.class);
 
     @InputPortFieldAnnotation(name = "data")
@@ -88,16 +92,29 @@ public class RMax<V extends Number> extends BaseNumberValueOperator<Number> impl
    */
     @Override
     public void setup(Context.OperatorContext context) {
+
         super.setup(context);
 
-        // new R-engine
-        rengine=new Rengine (new String [] {"--vanilla"}, false, null);
-        if (!rengine.waitForR())
-        {
-            log.debug(String.format( "\nCannot load R"));
-            throw new RuntimeException("Cannot load R");
-        }
+        try {
+            String[] args = {"--vanilla"};
 
+            // new R-engine
+            this.rengine = REngine.engineForClass("org.rosuda.REngine.JRI.JRIEngine", args, null, false);
+
+        } catch (Exception exc) {
+            log.error("Exception: ", exc);
+        }
+    }
+
+    /*
+    * Stop the R engine
+    */
+    @Override
+    public void teardown() {
+
+        if (rengine != null){
+            rengine.close();
+        }
     }
 
     /**
@@ -116,9 +133,21 @@ public class RMax<V extends Number> extends BaseNumberValueOperator<Number> impl
         }
 
 
-        rengine.assign("numList", values);
+        try {
+            rengine.assign("numList", values);
 
-        double rMax = rengine.eval("max(numList)").asDouble();
+        } catch (REngineException e) {
+            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+        }
+
+        double rMax = 0;
+        try {
+            rMax = rengine.parseAndEval("max(numList)").asDouble();
+        } catch (REngineException e) {
+            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+        } catch (REXPMismatchException e) {
+            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+        }
 
         log.debug(String.format( "\nMax is : \"" + rMax));
 
