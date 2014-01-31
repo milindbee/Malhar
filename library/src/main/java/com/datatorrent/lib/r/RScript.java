@@ -253,7 +253,10 @@ public class RScript extends ScriptOperator {
             writeStringAsFile(super.script, this.tmpFileName);
 
             REXP result = rengine.parseAndEval(super.script);
-
+        } catch (REngineException e) {
+            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+        } catch (REXPMismatchException e) {
+            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
         } catch (Exception exc) {
             log.error("Exception: ", exc);
         }
