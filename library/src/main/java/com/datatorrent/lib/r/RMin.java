@@ -22,6 +22,9 @@ import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
 import com.datatorrent.api.Operator.Unifier;
 import com.datatorrent.lib.util.BaseNumberValueOperator;
 import org.rosuda.JRI.Rengine;
+import org.rosuda.REngine.REXPMismatchException;
+import org.rosuda.REngine.REngine;
+import org.rosuda.REngine.REngineException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,7 +49,7 @@ import java.util.List;
 public class RMin<V extends Number> extends BaseNumberValueOperator<Number> implements Unifier<Number>
 {
     private List<Number> numList = new ArrayList<Number>();
-    private Rengine rengine;
+    private transient REngine rengine;
 
     private static Logger log = LoggerFactory.getLogger(RMin.class);
 
@@ -90,14 +93,27 @@ public class RMin<V extends Number> extends BaseNumberValueOperator<Number> impl
     public void setup(Context.OperatorContext context) {
         super.setup(context);
 
-        // new R-engine
-        rengine=new Rengine (new String [] {"--vanilla"}, false, null);
-        if (!rengine.waitForR())
-        {
-            log.debug(String.format( "\nCannot load R"));
-            throw new RuntimeException("Cannot load R");
+        try {
+            String[] args = {"--vanilla"};
+
+            // new R-engine
+            this.rengine = REngine.engineForClass("org.rosuda.REngine.JRI.JRIEngine", args, null, false);
+
+        } catch (Exception exc) {
+            log.error("Exception: ", exc);
         }
 
+    }
+
+/*
+* Stop the R engine
+*/
+    @Override
+    public void teardown() {
+
+        if (rengine != null){
+            rengine.close();
+        }
     }
 
     /**
@@ -114,9 +130,21 @@ public class RMin<V extends Number> extends BaseNumberValueOperator<Number> impl
             values[i] = numList.get(i).doubleValue();
         }
 
-        rengine.assign("numList", values);
+        try {
+            rengine.assign("numList", values);
+        } catch (REngineException e) {
+            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+        }
 
-        Number rMin = rengine.eval("min(numList)").asDouble();
+        double rMin = 0;
+        try {
+            rMin = rengine.parseAndEval("min(numList)").asDouble();
+        } catch (REngineException e) {
+            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+        } catch (REXPMismatchException e) {
+            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+        }
+
 
         log.debug(String.format( "\nMin is : \"" + rMin));
 
