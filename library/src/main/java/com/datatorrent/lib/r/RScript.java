@@ -53,11 +53,10 @@ import java.util.Map;
  * return value.
  *
  * <b> Sample Usage Code : </b>
- *  oper is an object of type RScript.
- *
- *  oper.setScriptFilePath("<script name>");
- *  oper.setFunctionName("<name of the function which has been given to the script inside he script file");
- *  oper.setReturnVariable("<name of the returned variable>");
+ *  oper is an object of type RScript. Create  it by passing -
+ *      <name of the R script with path from classpath>,
+ *      <name of the function to be invoked>,
+ *      <name of the return variable>);
  *
  *  Map<String, RScript.REXP_TYPE> argTypeMap = new HashMap<String, RScript.REXP_TYPE>();
  *  argTypeMap.put(<argument name>, RScript.<argument type in the form of REXP_TYPE>);
@@ -124,23 +123,12 @@ public class RScript extends ScriptOperator {
     private List<String[]> strArrayList = new ArrayList<String[]>();
     private List<Boolean[]> boolArrayList = new ArrayList<Boolean[]>();
 
-    // Name of the file to be created at runtime. This temp. file will be created by reading the script available in teh class path.
-    private transient String tmpFileName;
-
     // Name of the return variable
     private String returnVariable;
 
     // Function name given to the script inside the script file.
     private String functionName;
 
-    // Is the script file already available on the node where it will be executed.
-    // If this this is set to 'true' it means that the script file is not available
-    // and should be copied onto the node at runtime.
-    //
-    // The default value is 'false' meaning the sys administrator has ensured that
-    // the script file is available on the node where this operator is running.
-    // Hence the operator does not have to copy the file at runtime.
-    //
     protected String scriptFilePath;
 
     private transient REngine rengine;
@@ -249,9 +237,6 @@ public class RScript extends ScriptOperator {
             // new R-engine
             this.rengine = REngine.engineForClass("org.rosuda.REngine.JRI.JRIEngine", args, null, false);
 
-            getFileName();
-            writeStringAsFile(super.script, this.tmpFileName);
-
             REXP result = rengine.parseAndEval(super.script);
         } catch (REngineException e) {
             e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
@@ -264,89 +249,16 @@ public class RScript extends ScriptOperator {
 
 
     /*
-     * Emit the tuples from all the lists on the respective output ports
-    */
-
-    @Override
-    public void endWindow() {
-
-        //Emit and then clear the list of tuples.
-        for (int i=0; i<intList.size(); i++) {
-            intOutput.emit(intList.get(i));
-        }
-        intList.clear();
-
-        for (int i=0; i<doubleList.size(); i++) {
-            doubleOutput.emit(doubleList.get(i));
-        }
-        doubleList.clear();
-
-        for (int i=0; i<strList.size(); i++) {
-            strOutput.emit(strList.get(i));
-        }
-        strList.clear();
-
-        for (int i=0; i<boolList.size(); i++) {
-            boolOutput.emit(boolList.get(i));
-        }
-        boolList.clear();
-
-        for (int i=0; i<intArrayList.size(); i++) {
-            intArrayOutput.emit(intArrayList.get(i));
-        }
-        intArrayList.clear();
-
-        for (int i=0; i<doubleArrayList.size(); i++) {
-            doubleArrayOutput.emit(doubleArrayList.get(i));
-        }
-        doubleArrayList.clear();
-
-        for (int i=0; i<strArrayList.size(); i++) {
-            strArrayOutput.emit(strArrayList.get(i));
-        }
-        strArrayList.clear();
-
-        for (int i=0; i<boolArrayList.size(); i++) {
-            boolArrayOutput.emit(boolArrayList.get(i));
-        }
-        boolArrayList.clear();
-
-
-        return;
-    }
-
-
-
-    /*
     * Stop the R engine and delete the script file if it was copied by this operator during the initial setup.
     */
     @Override
     public void teardown() {
-
-        File file = new File(this.tmpFileName);
-        if (!file.delete()) {
-            throw new RuntimeException("Error deleting file : " + this.tmpFileName);
-        }
 
         if (rengine != null){
             rengine.close();
         }
     }
 
-
-    /*
-    * Create a file name for the file to be created in the temporary directory. This name will consist of the
-    * java tmp dir. + actual file name appended by the current time and thread id.
-    * This is so as to make it unique and avoid overwriting any file with the same name already existing.
-    * This will be needed when creating the file and will be used when sourcing the R script. The file
-    * will be deleted later.
-    */
-    private void getFileName(){
-        String[] data = getScriptFilePath().split(File.separator);
-        String fileName = data[data.length - 1];
-        this.tmpFileName = System.getProperty("java.io.tmpdir") + File.separatorChar + fileName + System.currentTimeMillis() + "_" + Thread.currentThread().getId();
-        return;
-    }
 
     /*
     * This function reads the script file - the R script file here, which is to be executed
@@ -378,37 +290,6 @@ public class RScript extends ScriptOperator {
 
         return fileData.toString();
     }
-
-    /*
-    * Name : writeStringAsFile() : Writes contents from memory into a file.
-    * Arguments : contents from teh memory - to be written to the file
-    *
-    * Here, this function is used to create an R script file on a node before it can be sourced.
-    * The file will be created in the default temporary-file directory of java. Once the file is sourced,
-    * it will be deleted.
-    */
-
-    private void writeStringAsFile(String fileContent, String rFileName) {
-        FileWriter fileWriter = null;
-        try {
-            String content = fileContent;
-            File newRFile = new File(rFileName);
-            fileWriter = new FileWriter(newRFile);
-            BufferedWriter bw = new BufferedWriter(fileWriter);
-
-            bw.write(content);
-            bw.close();
-        } catch (IOException ex) {
-            log.error(String.format("\nError creating the R script file"));
-        } finally {
-            try {
-                fileWriter.close();
-            } catch (IOException ex) {
-                ex.printStackTrace();
-            }
-        }
-    }
-
 
     /**
      * Execute R code with variable value map.
@@ -463,7 +344,7 @@ public class RScript extends ScriptOperator {
                 }
             }
 
-            REXP result = rengine.parseAndEval("retVal<-" + getFunctionName() + "()");
+            REXP result = rengine.parseAndEval(getReturnVariable() + "<-" + getFunctionName() + "()");
             REXP retVal = rengine.parseAndEval(getReturnVariable());
 
             // Get the returned value and emit it on the appropriate output port depending
@@ -473,44 +354,37 @@ public class RScript extends ScriptOperator {
 
             if (retVal.isInteger()) {
                 len = retVal.length();
-                int iData;
 
                 if (len > 1){
-
                     Integer[] iAList = new Integer[len];
                     for (int i=0; i<len; i++) {
                         iAList[i] = (retVal.asIntegers()[i]);
                     }
-                    intArrayList.add(iAList);
+                    intArrayOutput.emit(iAList);
                 }else {
-                    iData = retVal.asInteger();
-                    intList.add(iData);
+                      intOutput.emit(retVal.asInteger());
                 }
             } else if (retVal.isNumeric()) {
 
                 len = retVal.length();
-                double dData;
 
                 if (len > 1){
-
                     Double[] dAList = new Double[len];
                     for (int i=0; i<len; i++) {
                         dAList[i] = (retVal.asDoubles()[i]);
                     }
-                    doubleArrayList.add(dAList);
+                    doubleArrayOutput.emit(dAList);
                 }else {
-                    dData = retVal.asDouble();
-                    doubleList.add(dData);
+                    doubleOutput.emit(retVal.asDouble());
                 }
             } else if (retVal.isString()) {
                 len = retVal.length();
-                String sData;
 
                 if (len > 1){
-                    strArrayList.add(retVal.asStrings());
+                    strArrayOutput.emit(retVal.asStrings());
+
                 }else {
-                    sData = retVal.asString();
-                    strList.add(sData);
+                      strOutput.emit(retVal.asString());
                 }
             } else if (retVal.isLogical()){
                 len = retVal.length();
@@ -521,10 +395,10 @@ public class RScript extends ScriptOperator {
                     for (int i=0; i<len; i++) {
                         bAList[i] = ((REXPLogical)retVal).isTRUE()[i];
                     }
-                    boolArrayList.add(bAList);
+                    boolArrayOutput.emit(bAList);
                 }else {
                     bData = (((REXPLogical)retVal).isTRUE());
-                    boolList.add(bData[0]);
+                    boolOutput.emit(bData[0]);
                 }
 
             }else {
@@ -535,4 +409,3 @@ public class RScript extends ScriptOperator {
         }
     }
 }
-
