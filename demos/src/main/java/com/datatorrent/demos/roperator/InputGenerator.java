@@ -9,6 +9,15 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Random;
 
+// The InputGenerator operator is used to generate input for the 'Old Faithful Geyser" application.
+// This application accepts readings for the waiting time and the subsequent eruption duration
+// of the 'Old Faithful' and based on this data, tries to predict the eruption duration of the next
+// eruption given the elapsed time since the last eruption.
+// The training data is generated for an application window and consists of multiple
+// waiting times and eruption duration values.
+// For every application window, it generates only one 'elapsed time' input for which the
+// prediction would be made.
+
 public class InputGenerator implements InputOperator {
 
     private static final Logger LOG = LoggerFactory.getLogger(InputGenerator.class);
