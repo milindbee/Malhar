@@ -74,6 +74,6 @@ public class FaithfulRScript extends RScript {
 
         super.process(map);
 
-        super.endWindow();
+//        super.endWindow();
     };
 }
