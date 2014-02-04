@@ -21,6 +21,7 @@ import com.datatorrent.api.Context;
 import com.datatorrent.api.DefaultInputPort;
 import com.datatorrent.api.DefaultOutputPort;
 import com.datatorrent.api.annotation.InputPortFieldAnnotation;
+import com.datatorrent.api.annotation.OperatorAnnotation;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
 import org.rosuda.JRI.Rengine;
 import org.rosuda.REngine.REXPMismatchException;
@@ -47,6 +48,7 @@ import java.util.List;
  * <br>
  */
 
+@OperatorAnnotation(partitionable = false)
 public class RStandardDeviation extends BaseOperator {
 
     private List<Number> values = new ArrayList<Number>();
