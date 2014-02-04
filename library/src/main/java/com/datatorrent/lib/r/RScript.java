@@ -21,6 +21,7 @@ import java.io.*;
 import com.datatorrent.api.*;
 import com.datatorrent.api.annotation.InputPortFieldAnnotation;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
+import com.datatorrent.api.annotation.ShipContainingJars;
 import com.datatorrent.lib.script.ScriptOperator;
 import org.apache.commons.lang.mutable.MutableDouble;
 import org.rosuda.REngine.*;
@@ -85,7 +86,7 @@ import java.util.Map;
  *
  * */
 
-
+@ShipContainingJars(classes = {REngine.class})
 public class RScript extends ScriptOperator {
 
 //    private static final long serialVersionUID = 201401161205L;
