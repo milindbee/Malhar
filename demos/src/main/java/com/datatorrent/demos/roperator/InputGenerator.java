@@ -60,12 +60,12 @@ public class InputGenerator implements InputOperator {
     {
         int id;
         do {
-            id = (int)Math.abs(Math.round(random.nextGaussian() * max / 2));
+            id = (int)Math.abs(Math.round(random.nextGaussian() * max));
         }
         while (id >= max);
 
         if (id < min){
-            id += min;
+            id = min;
         }
         return id;
     }
