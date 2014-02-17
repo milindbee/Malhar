@@ -11,9 +11,6 @@
  #attach data variable
  attach(datavar)
 
- #display all data
- datavar
-
  #create a linear model using lm(FORMULA, DATAVAR)
  #predict the fall eruption duration (ERUPT) using the waiting time since the last eruption (WAITING)
  eruption.lm <- lm(ERUPTIONS ~ WAITING, datavar)
@@ -28,8 +25,6 @@
  # Calculate the enrollment based on the percentage being asked for, and the model that has been rated above.
  nextEruptionDuration<-(interc+(eruptionDuration * ELAPSEDTIME))
 
-retVal<-nextEruptionDuration
-#retVal<-c(interc, eruptionDuration, nextEruptionDuration)
 retVal<-paste("nextEruptionDuration ", nextEruptionDuration, sep=": ")
 #retVal<-c("interc : ",interc, ", eruptionDuration : ", eruptionDuration,", nextEruptionDuration : ", nextEruptionDuration)
 
