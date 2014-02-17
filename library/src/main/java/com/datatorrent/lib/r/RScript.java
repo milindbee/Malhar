@@ -23,13 +23,17 @@ import com.datatorrent.api.annotation.InputPortFieldAnnotation;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
 import com.datatorrent.api.annotation.ShipContainingJars;
 import com.datatorrent.lib.script.ScriptOperator;
+import com.sun.tools.javac.util.ByteBuffer;
 import org.apache.commons.lang.mutable.MutableDouble;
+import org.rosuda.JRI.Rengine;
 import org.rosuda.REngine.*;
+import org.rosuda.REngine.JRI.JRIEngine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 
 import javax.validation.constraints.NotNull;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -86,7 +90,7 @@ import java.util.Map;
  *
  * */
 
-@ShipContainingJars(classes = {REngine.class})
+@ShipContainingJars(classes = {REngine.class, JRIEngine.class, Rengine.class})
 public class RScript extends ScriptOperator {
 
 //    private static final long serialVersionUID = 201401161205L;
@@ -288,8 +292,8 @@ public class RScript extends ScriptOperator {
             log.debug(String.format( "\nError reading the R script"));
             ex.printStackTrace();
         }
-
         return fileData.toString();
+
     }
 
     /**
