@@ -23,7 +23,6 @@ import com.datatorrent.api.annotation.InputPortFieldAnnotation;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
 import com.datatorrent.api.annotation.ShipContainingJars;
 import com.datatorrent.lib.script.ScriptOperator;
-import com.sun.tools.javac.util.ByteBuffer;
 import org.apache.commons.lang.mutable.MutableDouble;
 import org.rosuda.JRI.Rengine;
 import org.rosuda.REngine.*;
