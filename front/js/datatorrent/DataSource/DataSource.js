@@ -18,6 +18,7 @@ var path = require('path');
 var _ = require('underscore'), Backbone = require('backbone');
 var HTTP_VERBS = ['GET', 'POST', 'PUT', 'DELETE'];
 var settings = require('../settings');
+var visibly = require('../../vendor/visibly.polyfill');
 
 // CONSTRUCTOR
 function DataSource(host, user) {
@@ -48,7 +49,19 @@ DataSource.prototype = {
 
     connect: function() {
         // Pointer to this instance
-        var self = this;
+        var self = this, isHidden = visibly.hidden(), visibleTimer;
+
+        visibly.onHidden(function() {
+            visibleTimer = setTimeout(function() {
+                LOG('3', 'Console hidden for more than ' + Math.round(settings.visibility_timeout/1000) + ' seconds. Turning off WebSocket messages.');
+                isHidden = true;
+            }, settings.visibility_timeout);
+        });
+
+        visibly.onVisible(function() {
+            clearTimeout(visibleTimer);
+            isHidden = false;
+        });
 
         // This is the WebSocket object. A deferred is
         // created so the class can determine if the
@@ -60,16 +73,24 @@ DataSource.prototype = {
             LOG('2', 'WebSocket connection established');
             self.__wsCxn.resolveWith( self, [self.ws] );
         }
+        this.supressOnClose = false;
         this.ws.onclose = function() {
             LOG('3', 'WebSocket connection has closed');
-            Notifier.warning({
-                'title': 'WebSocket connection closed',
-                'text': 'The WebSocket connection to the daemon has been closed. You may have left the network or the server itself may be down. Try <a href="Javascript:window.location.reload(true)">refreshing the page</a>.',
-                'hide': false
-            });
+            if (!self.supressOnClose) {
+                Notifier.warning({
+                    'title': 'WebSocket connection closed',
+                    'text': 'The WebSocket connection to the Gateway has been closed. You may have left the network or the server itself may be down. Try <a href="Javascript:window.location.reload(true)">refreshing the page</a>.',
+                    'hide': false
+                });
+            }
         }
         this.ws.onmessage = function(msg) {
             var msgJson;
+
+            if (isHidden) {
+                return;
+            }
+
             try {
                 // to parse the json
                 msgJson = JSON.parse(msg.data);
@@ -134,6 +155,12 @@ DataSource.prototype = {
             });
         }
     },
+    disconnect: function () {
+        this.__wsCxn.done(function () {
+            this.supressOnClose = true;
+            this.ws.close();
+        })
+    },
     _ajax: function(type, options) {
         if (!options.url || typeof options.url !== 'string') {
             throw new Error('The url option is required for all ajax methods');
@@ -185,18 +212,6 @@ DataSource.prototype = {
         var message = {'type':'unsubscribe', 'topic': topic};
         this._send(message);
         LOG(2, 'unsubscribe', ['topic:', topic]);
-    },
-    getUIVersion: function(cb) {
-        this.get({
-            url: 'package.json',
-            success: function(res) {
-                cb(res.version);
-            },
-            dataType: 'json',
-            error: function() {
-                LOG('4', 'package.json could not be retrieved');
-            }
-        });
     },
     // launchApp: function(options) {
     //     
@@ -489,6 +504,45 @@ DataSource.prototype = {
         
         this.post(options);
         LOG(1, action + ' recording', [options]);
+    },
+    requestLicense: function (params) {
+        var url = settings.interpolateParams(settings.urls.LicenseRequest, {
+            v: settings.version
+        });
+
+        var options = {
+            data: params,
+            url: url
+        }
+
+        //var d = $.Deferred();
+        //d.resolve();
+        //return d.promise();
+
+        return this.post(options);
+    },
+    getLicenseLastRequest: function (params) {
+        var url = settings.interpolateParams(settings.urls.LicenseLastRequest, {
+            v: settings.version
+        });
+
+        var options = {
+            data: params,
+            url: url
+        }
+
+        return this.get(options);
+    },
+    getConfigIPAddresses: function () {
+        var url = settings.interpolateParams(settings.urls.ConfigIPAddresses, {
+            v: settings.version
+        });
+
+        var options = {
+            url: url
+        }
+
+        return this.get(options);
     }
 }
 

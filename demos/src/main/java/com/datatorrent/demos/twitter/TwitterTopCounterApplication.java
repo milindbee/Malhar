@@ -15,17 +15,23 @@
  */
 package com.datatorrent.demos.twitter;
 
+import java.net.URI;
+
+import org.apache.commons.lang.StringUtils;
+import org.apache.hadoop.conf.Configuration;
+
+import com.datatorrent.lib.algo.UniqueCounter;
+import com.datatorrent.lib.io.ConsoleOutputOperator;
+import com.datatorrent.lib.io.PubSubWebSocketOutputOperator;
+
+import com.datatorrent.contrib.twitter.TwitterSampleInput;
+
 import com.datatorrent.api.DAG;
 import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.StreamingApplication;
+
 import com.datatorrent.demos.rollingtopwords.WindowedTopCounter;
-import com.datatorrent.lib.algo.UniqueCounter;
-import com.datatorrent.lib.io.ConsoleOutputOperator;
-import com.datatorrent.lib.io.PubSubWebSocketOutputOperator;
-import java.net.URI;
-import org.apache.commons.lang.StringUtils;
-import org.apache.hadoop.conf.Configuration;
 
 /**
  * Twitter Demo Application: <br>
@@ -41,23 +47,23 @@ import org.apache.hadoop.conf.Configuration;
  * <br>
  * Before running this application, you need to create a Twitter API account
  * and configure the Twitter authentication.
- * For the CLI, those go into ~/.stram/stram-site.xml:
+ * For the CLI, those go into ~/.dt/dt-site.xml:
  * <pre>
  * {@code
  * <?xml version="1.0" encoding="UTF-8"?>
  * <?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
  * <configuration>
  *
- *   <property> <name>stram.operator.TweetSampler.consumerKey</name>
+ *   <property> <name>dt.operator.TweetSampler.consumerKey</name>
  *   <value>TBD</value> </property>
  *
- *   <property> <name>stram.operator.TweetSampler.consumerSecret</name>
+ *   <property> <name>dt.operator.TweetSampler.consumerSecret</name>
  *   <value>TBD</value> </property>
  *
- *   <property> <name>stram.operator.TweetSampler.accessToken</name>
+ *   <property> <name>dt.operator.TweetSampler.accessToken</name>
  *   <value>TBD</value> </property>
  *
- *   <property> <name>stram.operator.TweetSampler.accessTokenSecret</name>
+ *   <property> <name>dt.operator.TweetSampler.accessTokenSecret</name>
  *   <value>TBD</value> </property>
  * </configuration>
  * }

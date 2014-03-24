@@ -41,6 +41,10 @@ var BaseModel = Backbone.Model.extend({
     resourceAction: util.resourceAction,
     
     subscribeToTopic: util.subscribeToTopic,
+
+    fetchError: util.fetchError,
+    
+    responseFormatError: util.responseFormatError,
     
     checkForDataSource: function() {
         if (!this.dataSource) {
@@ -63,25 +67,17 @@ var BaseModel = Backbone.Model.extend({
             options.error = _.bind(function(collection, response, options) {
                 var obj;
                 if (typeof this.fetchError === 'function') {
-                    obj = this.fetchError.call(this, collection, response, options);
-                } else {
-                    obj = this.fetchError;
+                    this.fetchError.call(this, collection, response, options);
                 }
-
-                Notifier.error(obj);
             }, this);
         }
         
         LOG(1, 'fetching ' + this.debugName, ['options: ', options]);
         
         // Call super
-        Backbone.Collection.prototype.fetch.call(this, options);
+        return Backbone.Model.prototype.fetch.call(this, options);
     },
     
-    fetchError: util.fetchError,
-    
-    responseFormatError: util.responseFormatError,
-
     set: function(key, val, options) {
 
         var attrs, windowUpdates = {}, changesToWindowAttrs = [], setResult;
@@ -177,11 +173,8 @@ var BaseModel = Backbone.Model.extend({
                 if ( typeof transformedResponse !== 'object' && this.responseFormatError) {
                     var obj;
                     if (typeof this.responseFormatError === 'function') {
-                        obj = this.responseFormatError.call(this, resp, transformedResponse);
-                    } else {
-                        obj = this.responseFormatError;
+                        this.responseFormatError.call(this, resp, transformedResponse);
                     }
-                    Notifier.error(obj);
                 }
         
                 // Call original success function with transformed response.

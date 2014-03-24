@@ -15,15 +15,16 @@
  */
 package com.datatorrent.lib.io;
 
-import com.datatorrent.api.util.PubSubMessageCodec;
-import com.datatorrent.api.util.PubSubWebSocketClient;
-
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.datatorrent.lib.util.PubSubMessageCodec;
+import com.datatorrent.lib.util.PubSubWebSocketClient;
 
 /**
  * <p>PubSubWebSocketInputOperator class.</p>
@@ -34,7 +35,12 @@ public class PubSubWebSocketInputOperator extends WebSocketInputOperator
 {
   private static final Logger LOG = LoggerFactory.getLogger(PubSubWebSocketInputOperator.class);
   private HashSet<String> topics = new HashSet<String>();
-  private transient PubSubMessageCodec<Object> codec = new PubSubMessageCodec<Object>(mapper);
+  private transient PubSubMessageCodec<Object> codec;
+
+  public PubSubWebSocketInputOperator()
+  {
+    this.codec = new PubSubMessageCodec<Object>(mapper);
+  }
 
   public void addTopic(String topic)
   {

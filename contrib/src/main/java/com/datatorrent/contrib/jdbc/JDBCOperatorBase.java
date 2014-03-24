@@ -18,7 +18,10 @@ package com.datatorrent.contrib.jdbc;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.util.Properties;
+
 import javax.validation.constraints.NotNull;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,12 +34,12 @@ import com.datatorrent.lib.database.DBConnector;
  */
 public class JDBCOperatorBase implements DBConnector
 {
-  private static final Logger logger = LoggerFactory.getLogger(JDBCOperatorBase.class);
-
   @NotNull
   private String dbUrl;
   @NotNull
   private String dbDriver;
+  private String userName;
+  private String password;
   protected transient Connection connection = null;
 
   @NotNull
@@ -67,6 +70,26 @@ public class JDBCOperatorBase implements DBConnector
   }
 
   /**
+   * Sets the user name.
+   *
+   * @param userName user name.
+   */
+  public void setUserName(String userName)
+  {
+    this.userName = userName;
+  }
+
+  /**
+   * Sets the password.
+   *
+   * @param password password
+   */
+  public void setPassword(String password)
+  {
+    this.password = password;
+  }
+
+  /**
    * Create connection with database using JDBC.
    */
   @Override
@@ -75,7 +98,14 @@ public class JDBCOperatorBase implements DBConnector
     try {
       // This will load the JDBC driver, each DB has its own driver
       Class.forName(dbDriver).newInstance();
-      connection = DriverManager.getConnection(dbUrl);
+      Properties connectionProps = new Properties();
+      if (userName != null) {
+        connectionProps.put("user", this.userName);
+      }
+      if (password != null) {
+        connectionProps.put("password", this.password);
+      }
+      connection = DriverManager.getConnection(dbUrl, connectionProps);
 
       logger.debug("JDBC connection Success");
     }
@@ -100,4 +130,44 @@ public class JDBCOperatorBase implements DBConnector
       throw new RuntimeException("Error while closing database resource", ex);
     }
   }
+
+  @Override
+  public boolean equals(Object o)
+  {
+    if (this == o) {
+      return true;
+    }
+    if (!(o instanceof JDBCOperatorBase)) {
+      return false;
+    }
+
+    JDBCOperatorBase that = (JDBCOperatorBase) o;
+
+    if (dbDriver != null ? !dbDriver.equals(that.dbDriver) : that.dbDriver != null) {
+      return false;
+    }
+    if (dbUrl != null ? !dbUrl.equals(that.dbUrl) : that.dbUrl != null) {
+      return false;
+    }
+    if (password != null ? !password.equals(that.password) : that.password != null) {
+      return false;
+    }
+    if (userName != null ? !userName.equals(that.userName) : that.userName != null) {
+      return false;
+    }
+
+    return true;
+  }
+
+  @Override
+  public int hashCode()
+  {
+    int result = dbUrl != null ? dbUrl.hashCode() : 0;
+    result = 31 * result + (dbDriver != null ? dbDriver.hashCode() : 0);
+    result = 31 * result + (userName != null ? userName.hashCode() : 0);
+    result = 31 * result + (password != null ? password.hashCode() : 0);
+    return result;
+  }
+
+  private static final Logger logger = LoggerFactory.getLogger(JDBCOperatorBase.class);
 }

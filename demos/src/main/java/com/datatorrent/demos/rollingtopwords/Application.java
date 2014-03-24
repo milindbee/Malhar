@@ -18,7 +18,8 @@ package com.datatorrent.demos.rollingtopwords;
 import com.datatorrent.api.DAG;
 import com.datatorrent.api.StreamingApplication;
 import com.datatorrent.api.DAG.Locality;
-import com.datatorrent.demos.twitter.TwitterSampleInput;
+import com.datatorrent.contrib.twitter.TwitterSampleInput;
+import com.datatorrent.lib.algo.UniqueCounter;
 import com.datatorrent.lib.io.ConsoleOutputOperator;
 import org.apache.hadoop.conf.Configuration;
 
@@ -42,30 +43,23 @@ public class Application implements StreamingApplication
   @Override
   public void populateDAG(DAG dag, Configuration conf)
   {
-		TwitterSampleInput twitterFeed = new TwitterSampleInput();
-		twitterFeed.setConsumerKey("uPLCFoMJUGrnTevKcYNPQ");
-		twitterFeed
-				.setConsumerSecret("0LWZ4fL3eivCbkQcvReFL4Pbcg2yx6KN1f5jRrso");
-		twitterFeed
-				.setAccessToken("1525255297-6HksiqL4B0J9lTQfzfWjTjr7VKTDKA6rQON6otd");
-		twitterFeed
-				.setAccessTokenSecret("ya76sQEFjz5rcWThNOOoViNNfAT1vMlD6xkqpswQ");
-		twitterFeed = dag.addOperator("TweetSampler", twitterFeed);
+      TwitterSampleInput twitterFeed = new TwitterSampleInput();
+      twitterFeed = dag.addOperator("TweetSampler", twitterFeed);
 
-   /* TwitterStatusWordExtractor wordExtractor = dag.addOperator("WordExtractor", TwitterStatusWordExtractor.class);
+      TwitterStatusWordExtractor wordExtractor = dag.addOperator("WordExtractor", TwitterStatusWordExtractor.class);
 
-    UniqueCounter<String> uniqueCounter = dag.addOperator("UniqueWordCounter", new UniqueCounter<String>());
+      UniqueCounter<String> uniqueCounter = dag.addOperator("UniqueWordCounter", new UniqueCounter<String>());
 
-    WindowedTopCounter<String> topCounts = dag.addOperator("TopCounter", new WindowedTopCounter<String>());
-    topCounts.setTopCount(10);
-    topCounts.setSlidingWindowWidth(120, 1);
+      WindowedTopCounter<String> topCounts = dag.addOperator("TopCounter", new WindowedTopCounter<String>());
+      topCounts.setTopCount(10);
+      topCounts.setSlidingWindowWidth(120, 1);
 
-    dag.addStream("TweetStream", twitterFeed.text, wordExtractor.input).setInline(inline);
-    dag.addStream("TwittedWords", wordExtractor.output, uniqueCounter.data).setInline(inline);
+      dag.addStream("TweetStream", twitterFeed.text, wordExtractor.input).setLocality(Locality.CONTAINER_LOCAL);
+      dag.addStream("TwittedWords", wordExtractor.output, uniqueCounter.data).setLocality(locality);
 
-    dag.addStream("UniqueWordCounts", uniqueCounter.count, topCounts.input).setInline(inline);*/
+      dag.addStream("UniqueWordCounts", uniqueCounter.count, topCounts.input).setLocality(locality);
 
-    ConsoleOutputOperator consoleOperator = dag.addOperator("topWords", new ConsoleOutputOperator());
-    dag.addStream("TopWords", twitterFeed.text, consoleOperator.input).setLocality(locality);
+      ConsoleOutputOperator consoleOperator = dag.addOperator("topWords", new ConsoleOutputOperator());
+      dag.addStream("TopWords", topCounts.output, consoleOperator.input).setLocality(locality);
   }
 }

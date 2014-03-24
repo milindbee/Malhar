@@ -21,6 +21,7 @@ var BaseView = require('bassview');
 // modals
 var LicenseModal = require('../LicenseModalView');
 var GatewayInfoModal = require('../GatewayInfoModalView');
+var ConsoleModal = require('../ConsoleInfoModalView');
 
 /**
  * Header View
@@ -34,18 +35,17 @@ var Header = BaseView.extend({
     UIVersion: '',
     
     initialize: function(options) {
-        this.listenTo(this.model, "change:mode", this.render );
-        options.dataSource.getUIVersion(
-            _.bind(function(version){
-                this.UIVersion = version;
-                this.render();
-            },this)
-        );
+        
+        this.license = options.license;
+
+        this.listenTo(this.model.modes, "change:active", this.render );
+        this.listenTo(this.license.get('agent'), 'sync', this.render);
     },
     
     events: {
         'click .displayLicenseInfo': 'displayLicenseInfo',
-        'click .displayGatewayInfo': 'displayGatewayInfo'
+        'click .displayGatewayInfo': 'displayGatewayInfo',
+        'click .displayConsoleInfo': 'displayConsoleInfo'
     },
 
     displayGatewayInfo: function(e) {
@@ -60,17 +60,26 @@ var Header = BaseView.extend({
     displayLicenseInfo: function(e) {
         e.preventDefault();
         if (!this.licenseModal) {
-            this.licenseModal = new LicenseModal({});
+            this.licenseModal = new LicenseModal({ model: this.license });
             this.licenseModal.addToDOM();
         }
         this.licenseModal.launch();
     },
+
+    displayConsoleInfo: function(e) {
+        e.preventDefault();
+        if (!this.consoleModal) {
+            this.consoleModal = new ConsoleModal({});
+            this.consoleModal.addToDOM();
+        }
+        this.consoleModal.launch();  
+    },
     
     render: function() {
         var markup = this.template({
-            modes: this.model.serializeModes(),
+            modes: this.model.modes.toJSON(),
             client_logo: "client_logo_hadoop.jpg",
-            version: this.UIVersion
+            license: this.license.toJSON()
         });
         this.$el.html(markup);
         this.$el.addClass('navbar-fixed-top').addClass('navbar');
