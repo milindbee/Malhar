@@ -1,8 +1,14 @@
-package com.datatorrent.demos.roperator;
+package com.datatorrent.contrib.oldfaithful;
 
 public class FaithfulKey {
-    double eruptionDuration;
-    int waitingTime;
+
+    private static final long serialVersionUID = 201403251620L;
+
+    private double eruptionDuration;
+    private int waitingTime;
+
+    public FaithfulKey() {
+    }
 
     public double getEruptionDuration() {
         return eruptionDuration;
