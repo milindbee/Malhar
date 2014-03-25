@@ -1,4 +1,4 @@
-package com.datatorrent.lib.r;
+package com.datatorrent.contrib.r;
 
 import com.datatorrent.lib.testbench.CountAndLastTupleTestSink;
 import junit.framework.Assert;
