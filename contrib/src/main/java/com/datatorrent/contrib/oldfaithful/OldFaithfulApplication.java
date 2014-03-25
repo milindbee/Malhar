@@ -1,4 +1,5 @@
-package com.datatorrent.demos.roperator;
+package com.datatorrent.contrib.oldfaithful;
+
 
 import com.datatorrent.api.DAG;
 import com.datatorrent.api.StreamingApplication;
@@ -21,7 +22,7 @@ public class OldFaithfulApplication implements StreamingApplication
     {
         dag.setAttribute(DAG.APPLICATION_NAME, "OldFaithfulApplication");
         InputGenerator randomInputGenerator = dag.addOperator("rand", new InputGenerator());
-        FaithfulRScript rScriptOp = dag.addOperator("rScriptOp", new FaithfulRScript("com/datatorrent/demos/roperator/eruptionModel.R", "eruptionModel", "retVal"));
+        FaithfulRScript rScriptOp = dag.addOperator("rScriptOp", new FaithfulRScript("com/datatorrent/demos/oldfaithful/eruptionModel.R", "eruptionModel", "retVal"));
         ConsoleOutputOperator consoled = dag.addOperator("console", new ConsoleOutputOperator());
         ConsoleOutputOperator consoledA = dag.addOperator("consoledA", new ConsoleOutputOperator());
         ConsoleOutputOperator consoles = dag.addOperator("consoles", new ConsoleOutputOperator());
