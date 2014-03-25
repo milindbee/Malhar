@@ -1,4 +1,4 @@
-package com.datatorrent.demos.roperator;
+package com.datatorrent.contrib.oldfaithful;
 
 
 import com.datatorrent.api.LocalMode;
