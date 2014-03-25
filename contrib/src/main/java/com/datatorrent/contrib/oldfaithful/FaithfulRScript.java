@@ -1,14 +1,13 @@
-package com.datatorrent.demos.roperator;
+package com.datatorrent.contrib.oldfaithful;
 
 import com.datatorrent.api.Context;
 import com.datatorrent.api.DefaultInputPort;
 import com.datatorrent.api.annotation.InputPortFieldAnnotation;
-import com.datatorrent.lib.r.RScript;
+import com.datatorrent.contrib.r.RScript;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 public class FaithfulRScript extends RScript {
 
