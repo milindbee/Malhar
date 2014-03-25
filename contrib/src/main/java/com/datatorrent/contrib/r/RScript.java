@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.datatorrent.lib.r;
+package com.datatorrent.contrib.r;
 
 
 import java.io.*;
@@ -92,7 +92,7 @@ import java.util.Map;
 @ShipContainingJars(classes = {REngine.class, JRIEngine.class, Rengine.class})
 public class RScript extends ScriptOperator {
 
-//    private static final long serialVersionUID = 201401161205L;
+    private static final long serialVersionUID = 201401161205L;
 
     public Map<String, REXP_TYPE> getArgTypeMap() {
         return argTypeMap;
