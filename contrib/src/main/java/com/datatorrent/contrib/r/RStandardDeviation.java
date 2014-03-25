@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.datatorrent.lib.r;
+package com.datatorrent.contrib.r;
 
 import com.datatorrent.api.BaseOperator;
 import com.datatorrent.api.Context;
